@@ -1,0 +1,4 @@
+tasks:
+  - name: pidan-panel
+    description: Manage single-instance Minecraft server container lifecycle, console, and files.
+    track: brief
