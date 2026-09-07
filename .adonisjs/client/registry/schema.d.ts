@@ -439,4 +439,76 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/server_backup_restorations_controller').default['store']>>>
     }
   }
+  'server_schedules.index': {
+    methods: ["GET","HEAD"]
+    pattern: '/api/v1/servers/:id/schedules'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/server_schedules_controller').default['index']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/server_schedules_controller').default['index']>>>
+    }
+  }
+  'server_schedules.store': {
+    methods: ["POST"]
+    pattern: '/api/v1/servers/:id/schedules'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#validators/server_schedule').createServerScheduleValidator)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#validators/server_schedule').createServerScheduleValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/server_schedules_controller').default['store']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/server_schedules_controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'server_schedules.show': {
+    methods: ["GET","HEAD"]
+    pattern: '/api/v1/servers/:id/schedules/:scheduleId'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue, ParamValue]
+      params: { id: ParamValue; scheduleId: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/server_schedules_controller').default['show']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/server_schedules_controller').default['show']>>>
+    }
+  }
+  'server_schedules.update': {
+    methods: ["PATCH"]
+    pattern: '/api/v1/servers/:id/schedules/:scheduleId'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#validators/server_schedule').updateServerScheduleValidator)>>
+      paramsTuple: [ParamValue, ParamValue]
+      params: { id: ParamValue; scheduleId: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#validators/server_schedule').updateServerScheduleValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/server_schedules_controller').default['update']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/server_schedules_controller').default['update']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'server_schedules.destroy': {
+    methods: ["DELETE"]
+    pattern: '/api/v1/servers/:id/schedules/:scheduleId'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue, ParamValue]
+      params: { id: ParamValue; scheduleId: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/server_schedules_controller').default['destroy']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/server_schedules_controller').default['destroy']>>>
+    }
+  }
+  'server_schedules.run': {
+    methods: ["POST"]
+    pattern: '/api/v1/servers/:id/schedules/:scheduleId/runs'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue, ParamValue]
+      params: { id: ParamValue; scheduleId: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/server_schedules_controller').default['run']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/server_schedules_controller').default['run']>>>
+    }
+  }
 }

@@ -594,7 +594,11 @@ test.group('Server Backups', (group) => {
     assert.isTrue(backupsGone)
 
     const remainingBackups = await ServerBackup.query().where('mcServerId', server.id)
-    assert.lengthOf(remainingBackups, 0, 'Database ServerBackup records should be purged when server is deleted')
+    assert.lengthOf(
+      remainingBackups,
+      0,
+      'Database ServerBackup records should be purged when server is deleted'
+    )
   })
 
   test('creates a snapshot with wildcard excludes parameter, skipping ignored files and preserving unignored files', async ({
@@ -669,13 +673,10 @@ test.group('Server Backups', (group) => {
     ]
 
     for (const badExcludes of testCases) {
-      const res = await client
-        .post(`/api/v1/servers/${server.id}/backups`)
-        .loginAs(admin)
-        .json({
-          name: 'Invalid Pattern Backup',
-          excludes: badExcludes,
-        })
+      const res = await client.post(`/api/v1/servers/${server.id}/backups`).loginAs(admin).json({
+        name: 'Invalid Pattern Backup',
+        excludes: badExcludes,
+      })
       res.assertStatus(422)
     }
   })

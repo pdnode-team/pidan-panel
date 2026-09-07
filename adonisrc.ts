@@ -29,6 +29,7 @@ export default defineConfig({
     () => import('@adonisjs/lucid/commands'),
     () => import('@adonisjs/session/commands'),
     () => import('@adonisplus/flow/commands'),
+    () => import('adonisjs-scheduler/commands'),
   ],
 
   /*
@@ -58,6 +59,10 @@ export default defineConfig({
       file: () => import('@adonisplus/flow/flow_dashboard_provider'),
       environment: ['web'],
     },
+    {
+      file: () => import('adonisjs-scheduler/scheduler_provider'),
+      environment: ['console'],
+    },
   ],
 
   /*
@@ -72,6 +77,10 @@ export default defineConfig({
     () => import('#start/routes'),
     () => import('#start/kernel'),
     () => import('#start/validator'),
+    {
+      file: () => import('#start/scheduler'),
+      environment: ['console'],
+    },
   ],
 
   /*

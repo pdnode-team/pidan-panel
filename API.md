@@ -1,8 +1,9 @@
 # Pidan Panel 后端 API 文档 (v1)
 
 > **基础信息**
+>
 > - **Base URL**: `http://localhost:3333/api/v1`
-> - **数据规范**: 
+> - **数据规范**:
 >   - 请求请务必携带 `Content-Type: application/json` 请求头（文件上传除外）。
 >   - 成功响应体统一包裹在 `{ "data": ... }` 中（204 No Content 无响应体）。
 >   - 失败响应体统一为 `{ "errors": [{ "message": "错误原因", "rule": "规则名", "field": "字段名" }] }`。
@@ -11,6 +12,7 @@
 ---
 
 ## 目录
+
 1. [系统与初始化 (System & Setup)](#1-系统与初始化)
 2. [身份认证 (Authentication)](#2-身份认证)
 3. [个人信息 (Profile)](#3-个人信息)
@@ -24,13 +26,15 @@
 11. [服务端核心安装 (Install Jar)](#11-服务端核心安装)
 12. [用户管理与实例分配 (User Management)](#12-用户管理与实例分配)
 13. [实例快照备份与还原 (Server Backups)](#13-实例快照备份与还原)
-14. [统一错误响应规范](#14-统一错误响应规范)
+14. [实例通用计划任务 (Server Schedules - Cron)](#14-实例通用计划任务)
+15. [统一错误响应规范](#15-统一错误响应规范)
 
 ---
 
 ## 1. 系统与初始化
 
 ### 1.1 检查系统初始化状态
+
 用于前端在进入登录/注册页时判断系统是否是“首次安装”（是否有初始管理员）。
 
 - **URL**: `GET /system/setup-status`
@@ -45,26 +49,28 @@
   ```
 
 ### 1.2 获取系统实时状态与概览 (System Status)
+
 用于前端概览页展示“系统资源 (System Resources)”及“数据概览 (Data Overview)”。
 
 - **URL**: `GET /system/status`
 - **鉴权**: 需要 Token (`Authorization: Bearer <token>`)
 - **响应字段说明**:
-  | 字段 | 类型 | 说明 |
-  | --- | --- | --- |
-  | `cpuPercent` | number | 宿主机 CPU 使用率百分比（如 `12.5` 表示 12.5%） |
-  | `memoryPercent` | number | 系统内存使用率百分比（如 `45.2` 表示 45.2%） |
-  | `usedMemoryBytes` | number | 已用系统内存（字节 Bytes） |
-  | `totalMemoryBytes` | number | 系统总内存（字节 Bytes） |
-  | `freeMemoryBytes` | number | 空闲系统内存（字节 Bytes） |
-  | `nodeVersion` | string | Node.js 运行时版本（如 `"v20.12.2"`） |
-  | `panelVersion` | string | 面板核心版本（如 `"1.0.0 (Adonis + Vue3)"`） |
-  | `processUser` | string | 面板进程运行用户（如 `"root / administrator"`） |
-  | `panelTime` | string | 服务器当前 ISO 时间戳 |
-  | `loadAverage` | `[number, number, number]` | 系统负载均值（1分钟、5分钟、15分钟） |
-  | `hostMachine` | string | 宿主机主机名（如 `"pidan-local-srv"`） |
-  | `osEnvironment` | string | 操作系统与架构环境（如 `"Linux (x64)"` 或 `"Windows (x64)"`） |
-  | `containerEngine` | string | 容器引擎状态与版本（如 `"Docker 28.4.0 Ready"`） |
+
+  | 字段               | 类型                       | 说明                                                          |
+  | ------------------ | -------------------------- | ------------------------------------------------------------- |
+  | `cpuPercent`       | number                     | 宿主机 CPU 使用率百分比（如 `12.5` 表示 12.5%）               |
+  | `memoryPercent`    | number                     | 系统内存使用率百分比（如 `45.2` 表示 45.2%）                  |
+  | `usedMemoryBytes`  | number                     | 已用系统内存（字节 Bytes）                                    |
+  | `totalMemoryBytes` | number                     | 系统总内存（字节 Bytes）                                      |
+  | `freeMemoryBytes`  | number                     | 空闲系统内存（字节 Bytes）                                    |
+  | `nodeVersion`      | string                     | Node.js 运行时版本（如 `"v20.12.2"`）                         |
+  | `panelVersion`     | string                     | 面板核心版本（如 `"1.0.0 (Adonis + Vue3)"`）                  |
+  | `processUser`      | string                     | 面板进程运行用户（如 `"root / administrator"`）               |
+  | `panelTime`        | string                     | 服务器当前 ISO 时间戳                                         |
+  | `loadAverage`      | `[number, number, number]` | 系统负载均值（1分钟、5分钟、15分钟）                          |
+  | `hostMachine`      | string                     | 宿主机主机名（如 `"pidan-local-srv"`）                        |
+  | `osEnvironment`    | string                     | 操作系统与架构环境（如 `"Linux (x64)"` 或 `"Windows (x64)"`） |
+  | `containerEngine`  | string                     | 容器引擎状态与版本（如 `"Docker 28.4.0 Ready"`）              |
 
 - **响应示例 (HTTP 200)**:
   ```json
@@ -87,22 +93,69 @@
   }
   ```
 
+### 1.3 全局健康检查 (Global Health Checks)
+
+用于反向代理（Nginx/Caddy）、容器编排探针（Kubernetes liveness/readiness probe、Docker healthcheck）或全局监控中心（Uptime Kuma、Prometheus）。基于 AdonisJS 官方 `@adonisjs/core/health` 体系构建。
+
+- **URL**: `GET /health` 或 `GET /health` (Base URL 下 `GET /api/v1/health`)
+- **鉴权**: 无需 Token
+- **响应码**: 系统健康时返回 `HTTP 200 OK`，若核心组件严重异常则返回 `HTTP 503 Service Unavailable`。
+- **响应示例 (HTTP 200)**:
+  ```json
+  {
+    "isHealthy": true,
+    "status": "ok",
+    "finishedAt": "2026-09-07T20:00:00.000Z",
+    "debugInfo": {
+      "pid": 1234,
+      "platform": "win32",
+      "uptime": 123.45,
+      "version": "v20.18.0"
+    },
+    "checks": [
+      {
+        "name": "Disk space check",
+        "status": "ok",
+        "message": "Disk usage is under defined thresholds"
+      },
+      {
+        "name": "Memory heap check",
+        "status": "ok",
+        "message": "Heap usage is under defined thresholds"
+      },
+      {
+        "name": "Database health check (sqlite)",
+        "status": "ok",
+        "message": "Successfully connected to the database server"
+      },
+      {
+        "name": "Docker engine check",
+        "status": "ok",
+        "message": "Docker engine is reachable and operational",
+        "meta": { "version": "28.4.0" }
+      }
+    ]
+  }
+  ```
+
 ---
 
 ## 2. 身份认证
 
 ### 2.1 首次管理员注册 (Signup)
+
 当 `needsSetup === true` 时可用。创建第一个系统管理员后，该接口将永久关闭（禁止后续自行注册）。
 
 - **URL**: `POST /auth/signup`
 - **鉴权**: 无需 Token
 - **请求体 (JSON)**:
-  | 字段 | 类型 | 必填 | 说明 |
-  | --- | --- | --- | --- |
-  | `fullName` | string \| null | 否 | 管理员姓名/昵称 |
-  | `email` | string | 是 | 邮箱地址，唯一 |
-  | `password` | string | 是 | 密码，最少 8 位，最长 32 位 |
-  | `passwordConfirmation` | string | 是 | 确认密码，必须与 password 完全一致 |
+
+  | 字段                   | 类型           | 必填 | 说明                               |
+  | ---------------------- | -------------- | ---- | ---------------------------------- |
+  | `fullName`             | string \| null | 否   | 管理员姓名/昵称                    |
+  | `email`                | string         | 是   | 邮箱地址，唯一                     |
+  | `password`             | string         | 是   | 密码，最少 8 位，最长 32 位        |
+  | `passwordConfirmation` | string         | 是   | 确认密码，必须与 password 完全一致 |
 
 - **请求示例**:
   ```json
@@ -132,13 +185,15 @@
   - `HTTP 403`: `{"errors": [{"message": "Registration is closed. Administrator already exists."}]}`
 
 ### 2.2 用户登录 (Login)
+
 - **URL**: `POST /auth/login`
 - **鉴权**: 无需 Token
 - **请求体 (JSON)**:
-  | 字段 | 类型 | 必填 | 说明 |
-  | --- | --- | --- | --- |
-  | `email` | string | 是 | 登录邮箱 |
-  | `password` | string | 是 | 登录密码 |
+
+  | 字段       | 类型   | 必填 | 说明     |
+  | ---------- | ------ | ---- | -------- |
+  | `email`    | string | 是   | 登录邮箱 |
+  | `password` | string | 是   | 登录密码 |
 
 - **请求示例**:
   ```json
@@ -164,6 +219,7 @@
   ```
 
 ### 2.3 退出登录 (Logout)
+
 注销当前 Token。
 
 - **URL**: `POST /logout`
@@ -175,6 +231,7 @@
 ## 3. 个人信息
 
 ### 3.1 获取当前登录用户信息
+
 - **URL**: `GET /profile`
 - **鉴权**: `Bearer <token>`
 - **响应示例 (HTTP 200)**:
@@ -197,6 +254,7 @@
 用于新建服务器时提供核心类型（Paper, Vanilla, Purpur, Fabric...）与版本选择。
 
 ### 4.1 获取所有支持的服务端类型
+
 - **URL**: `GET /mcjars/types`
 - **鉴权**: `Bearer <token>`
 - **响应示例 (HTTP 200)**:
@@ -226,6 +284,7 @@
   ```
 
 ### 4.2 获取指定类型的可用版本列表
+
 - **URL**: `GET /mcjars/types/:type` (例如 `/mcjars/types/paper`)
 - **鉴权**: `Bearer <token>`
 - **响应示例 (HTTP 200)**:
@@ -253,6 +312,7 @@
 ## 5. 服务器实例管理
 
 ### 5.1 获取服务器列表 (分页)
+
 - **URL**: `GET /servers`
 - **查询参数**:
   - `page`: 页码，默认 `1`
@@ -299,19 +359,21 @@
   ```
 
 ### 5.2 创建服务器实例
+
 - **URL**: `POST /servers`
 - **鉴权**: `Bearer <token>`
 - **请求体 (JSON)**:
-  | 字段 | 类型 | 必填 | 默认值 / 约束 | 说明 |
-  | --- | --- | --- | --- | --- |
-  | `name` | string | 是 | 1-100字符 | 显示名称，如 "我的MC服务器" |
-  | `identifier` | string | 是 | 2-50字符，正则 `^[a-z0-9-]+$` | 唯一英文标识，决定容器名和存放目录 |
-  | `serverJar` | string | 否 | `"server.jar"` | 运行的核心文件名 |
-  | `dockerImage` | string | 否 | `"eclipse-temurin:21-jre-alpine"` | Java 运行环境镜像 |
-  | `minMemoryMb` | number | 否 | `1024` (256~65536) | 最小内存 (-Xms) |
-  | `maxMemoryMb` | number | 否 | `2048` (256~65536) | 最大内存 (-Xmx) |
-  | `serverPort` | number | 是 | 1024~65535，全局唯一 | 游戏对外端口，映射容器 25565 |
-  | `javaArgs` | string | 否 | 空 | 附加 JVM 启动参数 |
+
+  | 字段          | 类型   | 必填 | 默认值 / 约束                     | 说明                               |
+  | ------------- | ------ | ---- | --------------------------------- | ---------------------------------- |
+  | `name`        | string | 是   | 1-100字符                         | 显示名称，如 "我的MC服务器"        |
+  | `identifier`  | string | 是   | 2-50字符，正则 `^[a-z0-9-]+$`     | 唯一英文标识，决定容器名和存放目录 |
+  | `serverJar`   | string | 否   | `"server.jar"`                    | 运行的核心文件名                   |
+  | `dockerImage` | string | 否   | `"eclipse-temurin:21-jre-alpine"` | Java 运行环境镜像                  |
+  | `minMemoryMb` | number | 否   | `1024` (256~65536)                | 最小内存 (-Xms)                    |
+  | `maxMemoryMb` | number | 否   | `2048` (256~65536)                | 最大内存 (-Xmx)                    |
+  | `serverPort`  | number | 是   | 1024~65535，全局唯一              | 游戏对外端口，映射容器 25565       |
+  | `javaArgs`    | string | 否   | 空                                | 附加 JVM 启动参数                  |
 
 - **请求示例**:
   ```json
@@ -329,17 +391,20 @@
 - **响应**: `HTTP 201 Created`，返回包含 `data` 的服务器完整详情及初始状态 `runtime.status: "stopped"`。
 
 ### 5.3 获取单个服务器详情
+
 - **URL**: `GET /servers/:id`
 - **鉴权**: `Bearer <token>`
 - **响应**: `HTTP 200 OK`，包含该实例完整字段和 `runtime` 实时运行状态。
 
 ### 5.4 更新服务器配置
+
 - **URL**: `PUT /servers/:id` 或 `PATCH /servers/:id`
 - **鉴权**: `Bearer <token>`
 - **请求体**: 所有字段均为可选，仅传递要修改的字段（`name`, `serverJar`, `dockerImage`, `minMemoryMb`, `maxMemoryMb`, `serverPort`, `javaArgs`）。
 - **响应**: `HTTP 200 OK`，返回修改后的实例。
 
 ### 5.5 删除服务器
+
 - **URL**: `DELETE /servers/:id`
 - **查询参数 / 请求体 (可选)**:
   - `deleteFiles`: `boolean`，默认 `false`。
@@ -355,6 +420,7 @@
 ## 6. 服务器电源与生命周期
 
 ### 6.1 查看当前电源状态
+
 - **URL**: `GET /servers/:id/power`
 - **鉴权**: `Bearer <token>`
 - **响应示例 (HTTP 200)**:
@@ -370,6 +436,7 @@
   ```
 
 ### 6.2 启动服务器
+
 - **URL**: `POST /servers/:id/power`
 - **鉴权**: `Bearer <token>`
 - **响应示例 (HTTP 201)**:
@@ -383,6 +450,7 @@
   ```
 
 ### 6.3 停止 / 强杀服务器
+
 - **URL**: `DELETE /servers/:id/power`
 - **查询参数**:
   - `force` (可选): `boolean` (`?force=true` 或 `?force=false`)
@@ -393,6 +461,7 @@
 - **响应**: `HTTP 204 No Content`
 
 ### 6.4 重启服务器
+
 - **URL**: `PATCH /servers/:id/power`
 - **鉴权**: `Bearer <token>`
 - **响应示例 (HTTP 200)**:
@@ -410,14 +479,16 @@
 ## 7. 控制台指令交互
 
 ### 7.1 向服务器发送控制台指令 (STDIN)
+
 向运行中的服务器发送指令。**支持用户或前端输入带或不带斜杠 `/`**（后端已做自动剔除容错）。
 
 - **URL**: `POST /servers/:id/commands`
 - **鉴权**: `Bearer <token>`
 - **请求体 (JSON)**:
-  | 字段 | 类型 | 必填 | 说明 |
-  | --- | --- | --- | --- |
-  | `command` | string | 是 | 指令内容，1-1000字符。如 `"ban Steve"` 或 `"/ban Steve"` |
+
+  | 字段      | 类型   | 必填 | 说明                                                     |
+  | --------- | ------ | ---- | -------------------------------------------------------- |
+  | `command` | string | 是   | 指令内容，1-1000字符。如 `"ban Steve"` 或 `"/ban Steve"` |
 
 - **请求示例**:
   ```json
@@ -432,6 +503,7 @@
 ## 8. 实时控制台日志 (SSE)
 
 ### 8.1 建立实时日志长连接
+
 基于 **Server-Sent Events (SSE)** 实时推流。连接建立时自动输出最后 50 行历史日志并持续推流。
 
 - **URL**: `GET /servers/:id/logs`
@@ -449,6 +521,7 @@
 ## 9. 硬件资源实时监控
 
 ### 9.1 获取硬件监控指标
+
 同时支持**单次快照拉取**与 **SSE 持续实时推流**。
 
 - **URL**: `GET /servers/:id/stats`
@@ -457,18 +530,21 @@
   - `stream` (可选): 为 `"true"` 时开启 SSE 实时长连接；不传或为 `"false"` 时为单次 HTTP 快照。
 
 #### 模式一：单次快照 (HTTP 200 JSON)
+
 - **请求**: `GET /servers/:id/stats`
 - **响应示例 (运行中)**:
   ```json
   {
     "data": {
       "online": true,
-      "cpuPercent": 15.42,            // CPU 使用率 (%)
-      "memoryUsageBytes": 1610612736, // 真实物理内存占用 (Bytes，已剔除系统 cache)
-      "memoryLimitBytes": 4294967296, // 容器最大内存上限 (Bytes)
-      "memoryPercent": 37.5,          // 内存占用百分比 (%)
-      "networkRxBytes": 2048576,      // 累计网络下行接收字节数
-      "networkTxBytes": 4096128       // 累计网络上行发送字节数
+      "cpuPercent": 15.42, // 当前 CPU 占用百分比 (数字，如 15.42)
+      "memoryBytes": 1610612736, // 当前已用内存字节数 (例如 1.5 GB，已剔除系统 cache)
+      "memoryUsageBytes": 1610612736, // 物理内存占用 (同 memoryBytes)
+      "memoryLimitBytes": 4294967296, // 实例配置的最大内存上限字节数 (例如 4.0 GB)
+      "memoryPercent": 37.5, // 内存占用百分比 (%)
+      "diskBytes": 524288000, // 服务器数据目录占用磁盘大小 (Bytes，带 30s 缓存)
+      "networkRxBytes": 2048576, // 累计网络下行接收字节数
+      "networkTxBytes": 4096128 // 累计网络上行发送字节数
     }
   }
   ```
@@ -478,21 +554,24 @@
     "data": {
       "online": false,
       "cpuPercent": 0,
+      "memoryBytes": 0,
       "memoryUsageBytes": 0,
       "memoryLimitBytes": 4294967296,
       "memoryPercent": 0,
+      "diskBytes": 524288000,
       "networkRxBytes": 0,
       "networkTxBytes": 0
     }
   }
   ```
-  *(注：即使服务器离线也返回 HTTP 200 和安全零值，避免前端控制台报错标红)*
+  _(注：即使服务器离线也返回 HTTP 200 和安全零值，避免前端控制台报错标红)_
 
 #### 模式二：SSE 实时流推流 (text/event-stream)
+
 - **请求**: `GET /servers/:id/stats?stream=true`
 - **数据帧格式 (每 1.5 秒推送一次)**:
   ```text
-  data: {"online":true,"cpuPercent":12.5,"memoryUsageBytes":1572864000,"memoryLimitBytes":4294967296,"memoryPercent":36.62,"networkRxBytes":2100000,"networkTxBytes":4200000}
+  data: {"online":true,"cpuPercent":12.5,"memoryBytes":1572864000,"memoryUsageBytes":1572864000,"memoryLimitBytes":4294967296,"memoryPercent":36.62,"diskBytes":524288000,"networkRxBytes":2100000,"networkTxBytes":4200000}
   ```
 
 ---
@@ -502,6 +581,7 @@
 所有路径均受绝对沙箱隔离保护（禁止跨出该服务器专属的 `dataDirectory`）。
 
 ### 10.1 浏览目录
+
 - **URL**: `GET /servers/:id/files`
 - **查询参数**:
   - `path` (可选): 相对路径，默认为根目录 `""`。如 `plugins` 或 `world/data`
@@ -531,6 +611,7 @@
   ```
 
 ### 10.2 读取文本文件内容
+
 - **URL**: `GET /servers/:id/files/content`
 - **查询参数**:
   - `path`: 相对文件路径（必填），如 `server.properties`
@@ -546,6 +627,7 @@
   ```
 
 ### 10.3 保存/创建文本文件
+
 - **URL**: `POST /servers/:id/files`
 - **鉴权**: `Bearer <token>`
 - **请求体 (JSON)**:
@@ -566,6 +648,7 @@
   ```
 
 ### 10.4 上传文件 (Multipart)
+
 - **URL**: `POST /servers/:id/files`
 - **鉴权**: `Bearer <token>`
 - **Content-Type**: `multipart/form-data`
@@ -583,6 +666,7 @@
   ```
 
 ### 10.5 重命名 / 移动文件
+
 - **URL**: `PATCH /servers/:id/files`
 - **鉴权**: `Bearer <token>`
 - **请求体 (JSON)**:
@@ -603,6 +687,7 @@
   ```
 
 ### 10.6 删除文件或文件夹
+
 - **URL**: `DELETE /servers/:id/files`
 - **查询参数**:
   - `path`: 待删除的相对文件或目录路径（必填）
@@ -614,17 +699,19 @@
 ## 11. 服务端核心安装
 
 ### 11.1 一键下载或安装服务端核心
+
 通过 MCJars 类型+版本直接下载，或通过任意自定义 Jar 直链 URL 下载并自动配置给服务器。
 
 - **URL**: `POST /servers/:id/jars`
 - **鉴权**: `Bearer <token>`
 - **请求体 (JSON)**:
-  | 字段 | 类型 | 必填 | 说明 |
-  | --- | --- | --- | --- |
-  | `type` | string | 选填 | 核心类型，如 `"paper"`, `"purpur"`, `"vanilla"` |
-  | `version` | string | 选填 | 对应版本，如 `"1.21.4"` |
-  | `url` | string | 选填 | 自定义直链下载 URL（与 type+version 二选一） |
-  | `targetFileName`| string | 选填 | 保存的目标文件名，默认 `"server.jar"` |
+
+  | 字段              | 类型    | 必填 | 说明                                                            |
+  | ----------------- | ------- | ---- | --------------------------------------------------------------- |
+  | `type`            | string  | 选填 | 核心类型，如 `"paper"`, `"purpur"`, `"vanilla"`                 |
+  | `version`         | string  | 选填 | 对应版本，如 `"1.21.4"`                                         |
+  | `url`             | string  | 选填 | 自定义直链下载 URL（与 type+version 二选一）                    |
+  | `targetFileName`  | string  | 选填 | 保存的目标文件名，默认 `"server.jar"`                           |
   | `updateServerJar` | boolean | 选填 | 下载后是否自动将该服务器的启动核心配置更新为该文件，默认 `true` |
 
 - **请求示例 (通过 MCJars)**:
@@ -661,14 +748,15 @@
 > **访问限制**：本章节所有接口仅拥有超级管理员（`admin`）角色的用户可以调用，普通用户访问一律返回 `403 Forbidden`。
 
 ### 12.1 获取用户列表 (分页与搜索)
+
 - **URL**: `GET /users`
 - **鉴权**: 需要 Token (`admin` 角色)
 - **查询参数**:
-  | 参数 | 类型 | 说明 |
-  | --- | --- | --- |
-  | `page` | number | 页码（默认 1） |
-  | `perPage` | number | 每页数量（默认 20，上限 100） |
-  | `search` | string | 搜索关键词（模糊匹配姓名或邮箱） |
+  | 参数      | 类型   | 说明                             |
+  | --------- | ------ | -------------------------------- |
+  | `page`    | number | 页码（默认 1）                   |
+  | `perPage` | number | 每页数量（默认 20，上限 100）    |
+  | `search`  | string | 搜索关键词（模糊匹配姓名或邮箱） |
 - **响应示例 (HTTP 200)**:
   ```json
   {
@@ -704,34 +792,38 @@
   ```
 
 ### 12.2 创建新用户
+
 - **URL**: `POST /users`
 - **鉴权**: 需要 Token (`admin` 角色)
 - **请求体 (JSON)**:
-  | 字段 | 类型 | 必填 | 说明 |
-  | --- | --- | --- | --- |
-  | `email` | string | 是 | 用户登录邮箱（全局唯一） |
-  | `password` | string | 是 | 初始密码（最少 8 位） |
-  | `fullName` | string \| null | 否 | 用户称谓/真实姓名 |
-  | `role` | string | 否 | 角色：`"admin"` 或 `"user"`（默认为 `"user"`） |
-  | `serverIds` | `number[]` | 否 | 授权该用户可访问与操作的服务器实例 ID 列表（如 `[1, 2]`，多对多授权） |
+  | 字段        | 类型           | 必填 | 说明                                                                  |
+  | ----------- | -------------- | ---- | --------------------------------------------------------------------- |
+  | `email`     | string         | 是   | 用户登录邮箱（全局唯一）                                              |
+  | `password`  | string         | 是   | 初始密码（最少 8 位）                                                 |
+  | `fullName`  | string \| null | 否   | 用户称谓/真实姓名                                                     |
+  | `role`      | string         | 否   | 角色：`"admin"` 或 `"user"`（默认为 `"user"`）                        |
+  | `serverIds` | `number[]`     | 否   | 授权该用户可访问与操作的服务器实例 ID 列表（如 `[1, 2]`，多对多授权） |
 
 ### 12.3 获取单个用户详情
+
 - **URL**: `GET /users/:id`
 - **鉴权**: 需要 Token (`admin` 角色)
 
 ### 12.4 修改用户资料与实例授权
+
 - **URL**: `PATCH /users/:id`
 - **鉴权**: 需要 Token (`admin` 角色)
 - **请求体 (JSON)**:
-  | 字段 | 类型 | 必填 | 说明 |
-  | --- | --- | --- | --- |
-  | `email` | string | 否 | 修改邮箱 |
-  | `password` | string | 否 | 重置密码（传入即更新，不传保持原密码） |
-  | `fullName` | string \| null | 否 | 修改姓名 |
-  | `role` | string | 否 | 修改角色（禁止将系统中最后一位管理员降级为普通用户） |
-  | `serverIds` | `number[]` | 否 | 更新该用户的授权实例 ID 列表（如 `[1, 3]` 即覆盖更新为该列表） |
+  | 字段        | 类型           | 必填 | 说明                                                           |
+  | ----------- | -------------- | ---- | -------------------------------------------------------------- |
+  | `email`     | string         | 否   | 修改邮箱                                                       |
+  | `password`  | string         | 否   | 重置密码（传入即更新，不传保持原密码）                         |
+  | `fullName`  | string \| null | 否   | 修改姓名                                                       |
+  | `role`      | string         | 否   | 修改角色（禁止将系统中最后一位管理员降级为普通用户）           |
+  | `serverIds` | `number[]`     | 否   | 更新该用户的授权实例 ID 列表（如 `[1, 3]` 即覆盖更新为该列表） |
 
 ### 12.5 删除用户
+
 - **URL**: `DELETE /users/:id`
 - **鉴权**: 需要 Token (`admin` 角色)
 - **防护机制**:
@@ -748,6 +840,7 @@
 能操作该实例的用户（管理员，或 `serverIds` 包含该实例的用户）均可调用本章接口。
 
 ### 13.1 获取快照列表（分页）
+
 - **URL**: `GET /servers/:id/backups`
 - **查询参数**: `page`（默认 1）、`perPage`（默认 20，上限 100）
 - **鉴权**: `Bearer <token>`，且对该实例有访问权
@@ -776,10 +869,11 @@
   `status` 为 `"pending"` | `"ready"` | `"failed"`。列表按创建时间倒序。
 
 ### 13.2 创建快照
+
 - **URL**: `POST /servers/:id/backups`
 - **请求体 (JSON，均可选)**:
-  | 字段 | 类型 | 说明 |
-  | --- | --- | --- |
+  | 字段   | 类型   | 说明                                         |
+  | ------ | ------ | -------------------------------------------- |
   | `name` | string | 显示名称，1–100 字符。省略时由面板填入时间戳 |
 - **行为**:
   - 实例已停止：直接拷贝数据目录后打包。
@@ -790,15 +884,18 @@
   - `HTTP 400`: `Failed to flush world saves. Backup aborted to avoid a corrupt snapshot.`
 
 ### 13.3 获取快照详情
+
 - **URL**: `GET /servers/:id/backups/:backupId`
 - **响应**: `HTTP 200`，单个快照对象。
 
 ### 13.4 下载快照
+
 - **URL**: `GET /servers/:id/backups/:backupId/download`
 - **响应**: zip 文件（非 `{ data }` 包裹）。仅 `ready` 状态可下载。
 - **错误**: `HTTP 409` `Backup is not ready to download.`
 
 ### 13.5 还原快照到当前实例
+
 - **URL**: `POST /servers/:id/backups/:backupId/restorations`
 - **前置**: 实例必须已停止；快照必须为 `ready`。
 - **行为**: 用该快照覆盖当前实例数据目录。快照之后新增的文件会消失。还原后实例保持停止，需再开机。
@@ -819,13 +916,119 @@
   - `HTTP 400`: `Backup archive contains files outside the server directory.`
 
 ### 13.6 删除快照
+
 - **URL**: `DELETE /servers/:id/backups/:backupId`
 - **响应**: `HTTP 204 No Content`
 - **错误**: `HTTP 409` `Cannot delete a backup that is still being created.`
 
 ---
 
-## 14. 统一错误响应规范
+## 14. 实例通用计划任务 (Server Schedules - Cron)
+
+基于 `adonisjs-scheduler` 调度引擎，支持服主为当前服务器实例配置定时自动化任务：
+
+- 定时自动创建快照（可附带通配符排除规则）
+- 定时向服务器控制台发送命令（如广播、定时清道夫指令、定时保存）
+- 定时重启、关机、开机
+
+> **访问限制**：计划任务涉及指令下发、定时自动备份与容器生命周期调度，仅拥有超级管理员（`admin`）角色的用户可以配置和操作，普通用户访问一律返回 `403 Forbidden`。
+
+### 14.1 获取计划任务列表 (分页)
+
+- **URL**: `GET /servers/:id/schedules`
+- **查询参数**: `page`（默认 1）、`perPage`（默认 50，上限 100）
+- **鉴权**: `Bearer <token>`
+- **响应示例 (HTTP 200)**:
+  ```json
+  {
+    "data": [
+      {
+        "id": 1,
+        "mcServerId": 1,
+        "name": "每日凌晨 4 点自动备份",
+        "cron": "0 4 * * *",
+        "action": "backup",
+        "payload": {
+          "name": "Auto-4AM",
+          "excludes": ["logs/**", "crash-reports/**"]
+        },
+        "isActive": true,
+        "lastRunAt": "2026-09-07T04:00:00.000Z",
+        "lastRunStatus": "success",
+        "lastRunMessage": "Backup #12 (Auto-4AM) created successfully",
+        "createdAt": "2026-09-06T10:00:00.000Z",
+        "updatedAt": "2026-09-07T04:00:05.000Z"
+      }
+    ],
+    "meta": {
+      "total": 1,
+      "perPage": 50,
+      "currentPage": 1,
+      "lastPage": 1
+    }
+  }
+  ```
+
+### 14.2 创建计划任务
+
+- **URL**: `POST /servers/:id/schedules`
+- **鉴权**: `Bearer <token>`
+- **请求体 (JSON)**:
+
+  | 字段       | 类型    | 必填 | 说明                                                                        |
+  | ---------- | ------- | ---- | --------------------------------------------------------------------------- |
+  | `name`     | string  | 是   | 任务名称（1–100 字符）                                                      |
+  | `cron`     | string  | 是   | 标准 Cron 表达式（如 `"0 4 * * *"` 每天凌晨 4 点）                          |
+  | `action`   | string  | 是   | 动作类型：`"backup"` \| `"command"` \| `"restart"` \| `"start"` \| `"stop"` |
+  | `payload`  | object  | 否   | 动作附加参数对象（见下表）                                                  |
+  | `isActive` | boolean | 否   | 是否启用（默认 `true`）                                                     |
+
+- **`payload` 字段说明**:
+
+  | 关联 action | 字段       | 类型              | 说明                                                                 |
+  | ----------- | ---------- | ----------------- | -------------------------------------------------------------------- |
+  | `command`   | `command`  | string            | 要向服务器发送的指令文本（如 `"say 每日例行维护将在 5 分钟后开始"`） |
+  | `backup`    | `name`     | string (可选)     | 自动快照显示名称                                                     |
+  | `backup`    | `excludes` | `string[]` (可选) | 自定义排除的文件通配符规则（如 `["logs/**"]`）                       |
+
+- **响应**: `HTTP 201 Created`，返回创建成功的计划任务对象。
+- **错误**:
+  - `HTTP 422`: `The cron field must be a valid cron expression`
+  - `HTTP 422`: `The action field must be in ...`
+
+### 14.3 获取计划任务详情
+
+- **URL**: `GET /servers/:id/schedules/:scheduleId`
+- **响应**: `HTTP 200`，单个计划任务对象。
+
+### 14.4 更新计划任务
+
+- **URL**: `PATCH /servers/:id/schedules/:scheduleId`
+- **鉴权**: `Bearer <token>`
+- **请求体 (JSON，均可选)**:
+  - `name`: string
+  - `cron`: string
+  - `action`: `"backup"` | `"command"` | `"restart"` | `"start"` | `"stop"`
+  - `payload`: object
+  - `isActive`: boolean (快速启用/停用)
+- **响应**: `HTTP 200`，更新后的计划任务对象。
+
+### 14.5 删除计划任务
+
+- **URL**: `DELETE /servers/:id/schedules/:scheduleId`
+- **响应**: `HTTP 204 No Content`
+
+### 14.6 立即手动触发执行一次 (Manual Run)
+
+用于服主或管理员测试计划任务是否工作正常，或在运维中手动立即触发该预设任务。
+
+- **URL**: `POST /servers/:id/schedules/:scheduleId/runs`
+- **鉴权**: `Bearer <token>`
+- **响应**: `HTTP 200 OK`，返回执行后的最新任务对象（附带最新的 `lastRunAt`、`lastRunStatus` 与 `lastRunMessage`）。
+
+---
+
+## 15. 统一错误响应规范
 
 当接口返回 `4xx` 或 `5xx` 时，统一返回格式如下：
 
@@ -842,6 +1045,7 @@
 ```
 
 前端统一封装示例 (Axios / Fetch 拦截器)：
+
 ```typescript
 // 提取第一条错误信息的通用工具函数
 export function getErrorMessage(error: any): string {

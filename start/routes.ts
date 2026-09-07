@@ -123,6 +123,26 @@ router
                 'store',
               ])
               .where('backupId', router.matchers.number())
+
+            // Instance cron schedules (Admin only)
+            router
+              .group(() => {
+                router.get('schedules', [controllers.ServerSchedules, 'index'])
+                router.post('schedules', [controllers.ServerSchedules, 'store'])
+                router
+                  .get('schedules/:scheduleId', [controllers.ServerSchedules, 'show'])
+                  .where('scheduleId', router.matchers.number())
+                router
+                  .patch('schedules/:scheduleId', [controllers.ServerSchedules, 'update'])
+                  .where('scheduleId', router.matchers.number())
+                router
+                  .delete('schedules/:scheduleId', [controllers.ServerSchedules, 'destroy'])
+                  .where('scheduleId', router.matchers.number())
+                router
+                  .post('schedules/:scheduleId/runs', [controllers.ServerSchedules, 'run'])
+                  .where('scheduleId', router.matchers.number())
+              })
+              .use(middleware.admin())
           })
           .prefix('servers/:id')
           .where('id', router.matchers.number())

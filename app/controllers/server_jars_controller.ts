@@ -35,7 +35,8 @@ export default class ServerJarsController {
       return response.conflict({
         errors: [
           {
-            message: 'Cannot install server jar while a backup or restore operation is in progress.',
+            message:
+              'Cannot install server jar while a backup or restore operation is in progress.',
           },
         ],
       })

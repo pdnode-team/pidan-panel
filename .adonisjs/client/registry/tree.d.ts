@@ -74,4 +74,12 @@ export interface ApiDefinition {
   serverBackupRestorations: {
     store: typeof routes['server_backup_restorations.store']
   }
+  serverSchedules: {
+    index: typeof routes['server_schedules.index']
+    store: typeof routes['server_schedules.store']
+    show: typeof routes['server_schedules.show']
+    update: typeof routes['server_schedules.update']
+    destroy: typeof routes['server_schedules.destroy']
+    run: typeof routes['server_schedules.run']
+  }
 }

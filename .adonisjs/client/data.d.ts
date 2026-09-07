@@ -8,6 +8,7 @@ import type { InferData, InferVariants } from '@adonisjs/core/types/transformers
 import type McServerTransformer from '#transformers/mc_server_transformer'
 import type ServerBackupTransformer from '#transformers/server_backup_transformer'
 import type ServerFileTransformer from '#transformers/server_file_transformer'
+import type ServerScheduleTransformer from '#transformers/server_schedule_transformer'
 import type UserTransformer from '#transformers/user_transformer'
 
 export namespace Data {
@@ -22,6 +23,10 @@ export namespace Data {
   export type ServerFile = InferData<ServerFileTransformer>
   export namespace ServerFile {
     export type Variants = InferVariants<ServerFileTransformer>
+  }
+  export type ServerSchedule = InferData<ServerScheduleTransformer>
+  export namespace ServerSchedule {
+    export type Variants = InferVariants<ServerScheduleTransformer>
   }
   export type User = InferData<UserTransformer>
   export namespace User {

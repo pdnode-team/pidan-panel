@@ -1,4 +1,10 @@
-import { DiskSpaceCheck, HealthChecks, MemoryHeapCheck, BaseCheck, Result } from '@adonisjs/core/health'
+import {
+  DiskSpaceCheck,
+  HealthChecks,
+  MemoryHeapCheck,
+  BaseCheck,
+  Result,
+} from '@adonisjs/core/health'
 import { DbCheck } from '@adonisjs/lucid/database'
 import db from '@adonisjs/lucid/services/db'
 import McContainerService from '#services/mc_container_service'

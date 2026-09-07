@@ -22,28 +22,28 @@ Reads: testing.md
 
 > This is the scope inventory for this change — every behavior the change makes observable, with a coverage decision per row. It is not the test list.
 
-| Observable behavior | Decision | Notes |
-| ------------------- | -------- | ----- |
-| Unauthenticated GET backups → 401 | add | — |
-| Operator without access → 403 | add | — |
-| Assigned user can create a snapshot | add | — |
-| Stopped instance POST backups → 201 ready snapshot of whole data space | add | — |
-| Snapshot archive is outside the instance data directory | add | — |
-| Omitted name → timestamp display name | add | — |
-| GET backups lists newest first with name, size, status | add | — |
-| GET backup member returns metadata | add | — |
-| Download ready snapshot returns zip bytes | add | — |
-| Restore onto stopped instance replaces data space | add | — |
-| Files added after snapshot are gone after restore | add | — |
-| DELETE ready snapshot → 204, archive gone | add | — |
-| Running instance create sends save-all flush, save-off, then save-on | add | — |
-| Flush failure aborts with exact message, save-on still attempted | add | — |
-| Restore while running → 409 exact message | add | — |
-| Concurrent create while another backup in flight → 409 | add | — |
-| Zip-slip restore rejected, data unchanged | add | — |
-| Delete instance discards backup directory | add | — |
-| Download pending/failed → 409 | skip | Covered by restore-not-ready shape; download of missing file is rare in v1. Failed create is asserted on flush failure. |
-| Delete pending → 409 | skip | Hard to freeze pending without swapping own backup service. Concurrent test covers in-flight mutex. |
+| Observable behavior                                                    | Decision | Notes                                                                                                                   |
+| ---------------------------------------------------------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Unauthenticated GET backups → 401                                      | add      | —                                                                                                                       |
+| Operator without access → 403                                          | add      | —                                                                                                                       |
+| Assigned user can create a snapshot                                    | add      | —                                                                                                                       |
+| Stopped instance POST backups → 201 ready snapshot of whole data space | add      | —                                                                                                                       |
+| Snapshot archive is outside the instance data directory                | add      | —                                                                                                                       |
+| Omitted name → timestamp display name                                  | add      | —                                                                                                                       |
+| GET backups lists newest first with name, size, status                 | add      | —                                                                                                                       |
+| GET backup member returns metadata                                     | add      | —                                                                                                                       |
+| Download ready snapshot returns zip bytes                              | add      | —                                                                                                                       |
+| Restore onto stopped instance replaces data space                      | add      | —                                                                                                                       |
+| Files added after snapshot are gone after restore                      | add      | —                                                                                                                       |
+| DELETE ready snapshot → 204, archive gone                              | add      | —                                                                                                                       |
+| Running instance create sends save-all flush, save-off, then save-on   | add      | —                                                                                                                       |
+| Flush failure aborts with exact message, save-on still attempted       | add      | —                                                                                                                       |
+| Restore while running → 409 exact message                              | add      | —                                                                                                                       |
+| Concurrent create while another backup in flight → 409                 | add      | —                                                                                                                       |
+| Zip-slip restore rejected, data unchanged                              | add      | —                                                                                                                       |
+| Delete instance discards backup directory                              | add      | —                                                                                                                       |
+| Download pending/failed → 409                                          | skip     | Covered by restore-not-ready shape; download of missing file is rare in v1. Failed create is asserted on flush failure. |
+| Delete pending → 409                                                   | skip     | Hard to freeze pending without swapping own backup service. Concurrent test covers in-flight mutex.                     |
 
 ## Test list (ordered)
 

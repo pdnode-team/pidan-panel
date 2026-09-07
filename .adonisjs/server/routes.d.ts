@@ -40,6 +40,12 @@ export type ScannedRoutes = {
     'server_backups.destroy': { paramsTuple: [ParamValue,ParamValue]; params: {'id': ParamValue,'backupId': ParamValue} }
     'server_backup_downloads.show': { paramsTuple: [ParamValue,ParamValue]; params: {'id': ParamValue,'backupId': ParamValue} }
     'server_backup_restorations.store': { paramsTuple: [ParamValue,ParamValue]; params: {'id': ParamValue,'backupId': ParamValue} }
+    'server_schedules.index': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'server_schedules.store': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'server_schedules.show': { paramsTuple: [ParamValue,ParamValue]; params: {'id': ParamValue,'scheduleId': ParamValue} }
+    'server_schedules.update': { paramsTuple: [ParamValue,ParamValue]; params: {'id': ParamValue,'scheduleId': ParamValue} }
+    'server_schedules.destroy': { paramsTuple: [ParamValue,ParamValue]; params: {'id': ParamValue,'scheduleId': ParamValue} }
+    'server_schedules.run': { paramsTuple: [ParamValue,ParamValue]; params: {'id': ParamValue,'scheduleId': ParamValue} }
   }
   GET: {
     'profile.show': { paramsTuple?: []; params?: {} }
@@ -58,6 +64,8 @@ export type ScannedRoutes = {
     'server_backups.index': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'server_backups.show': { paramsTuple: [ParamValue,ParamValue]; params: {'id': ParamValue,'backupId': ParamValue} }
     'server_backup_downloads.show': { paramsTuple: [ParamValue,ParamValue]; params: {'id': ParamValue,'backupId': ParamValue} }
+    'server_schedules.index': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'server_schedules.show': { paramsTuple: [ParamValue,ParamValue]; params: {'id': ParamValue,'scheduleId': ParamValue} }
   }
   HEAD: {
     'profile.show': { paramsTuple?: []; params?: {} }
@@ -76,6 +84,8 @@ export type ScannedRoutes = {
     'server_backups.index': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'server_backups.show': { paramsTuple: [ParamValue,ParamValue]; params: {'id': ParamValue,'backupId': ParamValue} }
     'server_backup_downloads.show': { paramsTuple: [ParamValue,ParamValue]; params: {'id': ParamValue,'backupId': ParamValue} }
+    'server_schedules.index': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'server_schedules.show': { paramsTuple: [ParamValue,ParamValue]; params: {'id': ParamValue,'scheduleId': ParamValue} }
   }
   POST: {
     'auth.new_account.store': { paramsTuple?: []; params?: {} }
@@ -89,6 +99,8 @@ export type ScannedRoutes = {
     'server_jars.store': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'server_backups.store': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'server_backup_restorations.store': { paramsTuple: [ParamValue,ParamValue]; params: {'id': ParamValue,'backupId': ParamValue} }
+    'server_schedules.store': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'server_schedules.run': { paramsTuple: [ParamValue,ParamValue]; params: {'id': ParamValue,'scheduleId': ParamValue} }
   }
   PUT: {
     'users.update': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
@@ -99,6 +111,7 @@ export type ScannedRoutes = {
     'servers.update': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'server_power_states.update': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'server_files.update': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'server_schedules.update': { paramsTuple: [ParamValue,ParamValue]; params: {'id': ParamValue,'scheduleId': ParamValue} }
   }
   DELETE: {
     'users.destroy': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
@@ -106,6 +119,7 @@ export type ScannedRoutes = {
     'server_power_states.destroy': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'server_files.destroy': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'server_backups.destroy': { paramsTuple: [ParamValue,ParamValue]; params: {'id': ParamValue,'backupId': ParamValue} }
+    'server_schedules.destroy': { paramsTuple: [ParamValue,ParamValue]; params: {'id': ParamValue,'scheduleId': ParamValue} }
   }
 }
 declare module '@adonisjs/core/types/http' {

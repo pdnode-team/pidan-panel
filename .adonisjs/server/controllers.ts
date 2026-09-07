@@ -17,6 +17,7 @@ export const controllers = {
   ServerJars: () => import('#controllers/server_jars_controller'),
   ServerLogs: () => import('#controllers/server_logs_controller'),
   ServerPowerStates: () => import('#controllers/server_power_states_controller'),
+  ServerSchedules: () => import('#controllers/server_schedules_controller'),
   ServerStats: () => import('#controllers/server_stats_controller'),
   SystemStatus: () => import('#controllers/system_status_controller'),
   Users: () => import('#controllers/users_controller'),

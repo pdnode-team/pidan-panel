@@ -3,10 +3,14 @@ import { McServerSchema } from '#database/schema'
 import { hasMany } from '@adonisjs/lucid/orm'
 import type { HasMany } from '@adonisjs/lucid/types/relations'
 import ServerBackup from '#models/server_backup'
+import ServerSchedule from '#models/server_schedule'
 
 export default class McServer extends McServerSchema {
   @hasMany(() => ServerBackup)
   declare backups: HasMany<typeof ServerBackup>
+
+  @hasMany(() => ServerSchedule)
+  declare schedules: HasMany<typeof ServerSchedule>
 
   /**
    * Dedicated container name for this instance

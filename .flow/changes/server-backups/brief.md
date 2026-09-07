@@ -62,14 +62,14 @@ Instance management (the instance exists, the operator can access it). Starting 
 
 ## Decisions made
 
-| Decision | Chosen over | Why |
-| :------- | :---------- | :-- |
-| Entire instance data space in each snapshot | Worlds-only, or operator-picked paths | Restoring a world without matching plugins and configs is a common footgun; the operator mental model is “snapshot of this server”. Matches Pterodactyl. |
-| Live snapshot with flushed, paused writes | Must-stop, or copy while dirty | Survival servers should not kick everyone for a snapshot; a dirty copy can corrupt the world on restore. |
-| Restore overwrites the current instance | Restore-as-new-instance, or download-only v1 | A snapshot you cannot apply is not production-safe. Restore-as-new-instance needs a new identifier and port and is a later change. |
-| Snapshots kept until the operator deletes them | Auto-prune / keep-last-N | v1 stays small; disk policy can come with scheduled snapshots later. |
-| Anyone who can operate the instance can snapshot it | Admin-only | Snapshots are part of operating the instance, same as files and console. |
-| Deleting the instance discards its snapshots | Keep snapshots after instance deletion | A snapshot belongs to that instance; restoring it requires the instance. Download first if it must survive. |
+| Decision                                            | Chosen over                                  | Why                                                                                                                                                      |
+| :-------------------------------------------------- | :------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Entire instance data space in each snapshot         | Worlds-only, or operator-picked paths        | Restoring a world without matching plugins and configs is a common footgun; the operator mental model is “snapshot of this server”. Matches Pterodactyl. |
+| Live snapshot with flushed, paused writes           | Must-stop, or copy while dirty               | Survival servers should not kick everyone for a snapshot; a dirty copy can corrupt the world on restore.                                                 |
+| Restore overwrites the current instance             | Restore-as-new-instance, or download-only v1 | A snapshot you cannot apply is not production-safe. Restore-as-new-instance needs a new identifier and port and is a later change.                       |
+| Snapshots kept until the operator deletes them      | Auto-prune / keep-last-N                     | v1 stays small; disk policy can come with scheduled snapshots later.                                                                                     |
+| Anyone who can operate the instance can snapshot it | Admin-only                                   | Snapshots are part of operating the instance, same as files and console.                                                                                 |
+| Deleting the instance discards its snapshots        | Keep snapshots after instance deletion       | A snapshot belongs to that instance; restoring it requires the instance. Download first if it must survive.                                              |
 
 ## Constraints the journey places on implementation
 

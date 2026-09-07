@@ -222,6 +222,42 @@ const routes = {
     tokens: [{"old":"/api/v1/servers/:id/backups/:backupId/restorations","type":0,"val":"api","end":""},{"old":"/api/v1/servers/:id/backups/:backupId/restorations","type":0,"val":"v1","end":""},{"old":"/api/v1/servers/:id/backups/:backupId/restorations","type":0,"val":"servers","end":""},{"old":"/api/v1/servers/:id/backups/:backupId/restorations","type":1,"val":"id","end":""},{"old":"/api/v1/servers/:id/backups/:backupId/restorations","type":0,"val":"backups","end":""},{"old":"/api/v1/servers/:id/backups/:backupId/restorations","type":1,"val":"backupId","end":""},{"old":"/api/v1/servers/:id/backups/:backupId/restorations","type":0,"val":"restorations","end":""}],
     types: placeholder as Registry['server_backup_restorations.store']['types'],
   },
+  'server_schedules.index': {
+    methods: ["GET","HEAD"],
+    pattern: '/api/v1/servers/:id/schedules',
+    tokens: [{"old":"/api/v1/servers/:id/schedules","type":0,"val":"api","end":""},{"old":"/api/v1/servers/:id/schedules","type":0,"val":"v1","end":""},{"old":"/api/v1/servers/:id/schedules","type":0,"val":"servers","end":""},{"old":"/api/v1/servers/:id/schedules","type":1,"val":"id","end":""},{"old":"/api/v1/servers/:id/schedules","type":0,"val":"schedules","end":""}],
+    types: placeholder as Registry['server_schedules.index']['types'],
+  },
+  'server_schedules.store': {
+    methods: ["POST"],
+    pattern: '/api/v1/servers/:id/schedules',
+    tokens: [{"old":"/api/v1/servers/:id/schedules","type":0,"val":"api","end":""},{"old":"/api/v1/servers/:id/schedules","type":0,"val":"v1","end":""},{"old":"/api/v1/servers/:id/schedules","type":0,"val":"servers","end":""},{"old":"/api/v1/servers/:id/schedules","type":1,"val":"id","end":""},{"old":"/api/v1/servers/:id/schedules","type":0,"val":"schedules","end":""}],
+    types: placeholder as Registry['server_schedules.store']['types'],
+  },
+  'server_schedules.show': {
+    methods: ["GET","HEAD"],
+    pattern: '/api/v1/servers/:id/schedules/:scheduleId',
+    tokens: [{"old":"/api/v1/servers/:id/schedules/:scheduleId","type":0,"val":"api","end":""},{"old":"/api/v1/servers/:id/schedules/:scheduleId","type":0,"val":"v1","end":""},{"old":"/api/v1/servers/:id/schedules/:scheduleId","type":0,"val":"servers","end":""},{"old":"/api/v1/servers/:id/schedules/:scheduleId","type":1,"val":"id","end":""},{"old":"/api/v1/servers/:id/schedules/:scheduleId","type":0,"val":"schedules","end":""},{"old":"/api/v1/servers/:id/schedules/:scheduleId","type":1,"val":"scheduleId","end":""}],
+    types: placeholder as Registry['server_schedules.show']['types'],
+  },
+  'server_schedules.update': {
+    methods: ["PATCH"],
+    pattern: '/api/v1/servers/:id/schedules/:scheduleId',
+    tokens: [{"old":"/api/v1/servers/:id/schedules/:scheduleId","type":0,"val":"api","end":""},{"old":"/api/v1/servers/:id/schedules/:scheduleId","type":0,"val":"v1","end":""},{"old":"/api/v1/servers/:id/schedules/:scheduleId","type":0,"val":"servers","end":""},{"old":"/api/v1/servers/:id/schedules/:scheduleId","type":1,"val":"id","end":""},{"old":"/api/v1/servers/:id/schedules/:scheduleId","type":0,"val":"schedules","end":""},{"old":"/api/v1/servers/:id/schedules/:scheduleId","type":1,"val":"scheduleId","end":""}],
+    types: placeholder as Registry['server_schedules.update']['types'],
+  },
+  'server_schedules.destroy': {
+    methods: ["DELETE"],
+    pattern: '/api/v1/servers/:id/schedules/:scheduleId',
+    tokens: [{"old":"/api/v1/servers/:id/schedules/:scheduleId","type":0,"val":"api","end":""},{"old":"/api/v1/servers/:id/schedules/:scheduleId","type":0,"val":"v1","end":""},{"old":"/api/v1/servers/:id/schedules/:scheduleId","type":0,"val":"servers","end":""},{"old":"/api/v1/servers/:id/schedules/:scheduleId","type":1,"val":"id","end":""},{"old":"/api/v1/servers/:id/schedules/:scheduleId","type":0,"val":"schedules","end":""},{"old":"/api/v1/servers/:id/schedules/:scheduleId","type":1,"val":"scheduleId","end":""}],
+    types: placeholder as Registry['server_schedules.destroy']['types'],
+  },
+  'server_schedules.run': {
+    methods: ["POST"],
+    pattern: '/api/v1/servers/:id/schedules/:scheduleId/runs',
+    tokens: [{"old":"/api/v1/servers/:id/schedules/:scheduleId/runs","type":0,"val":"api","end":""},{"old":"/api/v1/servers/:id/schedules/:scheduleId/runs","type":0,"val":"v1","end":""},{"old":"/api/v1/servers/:id/schedules/:scheduleId/runs","type":0,"val":"servers","end":""},{"old":"/api/v1/servers/:id/schedules/:scheduleId/runs","type":1,"val":"id","end":""},{"old":"/api/v1/servers/:id/schedules/:scheduleId/runs","type":0,"val":"schedules","end":""},{"old":"/api/v1/servers/:id/schedules/:scheduleId/runs","type":1,"val":"scheduleId","end":""},{"old":"/api/v1/servers/:id/schedules/:scheduleId/runs","type":0,"val":"runs","end":""}],
+    types: placeholder as Registry['server_schedules.run']['types'],
+  },
 } as const satisfies Record<string, AdonisEndpoint>
 
 export { routes }

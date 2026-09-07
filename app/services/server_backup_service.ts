@@ -286,11 +286,7 @@ export default class ServerBackupService {
     return { isExcluded, normalizedExcludes: normalized }
   }
 
-  protected async zipDirectory(
-    sourceDir: string,
-    outPath: string,
-    ignorePatterns: string[] = []
-  ) {
+  protected async zipDirectory(sourceDir: string, outPath: string, ignorePatterns: string[] = []) {
     await mkdir(dirname(outPath), { recursive: true })
     const output = createWriteStream(outPath)
     const archive = archiver('zip', { zlib: { level: 9 } })

@@ -401,11 +401,14 @@ test.group('Minecraft Servers Management', (group) => {
     })
 
     // 1. Create a server
-    const createRes = await client.post('/api/v1/servers').loginAs(admin).json({
-      name: 'Server For User Sync',
-      identifier: `sync-srv-${Date.now()}`,
-      serverPort: 25589,
-    })
+    const createRes = await client
+      .post('/api/v1/servers')
+      .loginAs(admin)
+      .json({
+        name: 'Server For User Sync',
+        identifier: `sync-srv-${Date.now()}`,
+        serverPort: 25589,
+      })
     createRes.assertStatus(201)
     const server = (createRes.body() as any).data
 
@@ -442,51 +445,48 @@ test.group('Minecraft Servers Management', (group) => {
     })
 
     // 1. Default creation has stopTimeoutSeconds: 60
-    const defaultRes = await client.post('/api/v1/servers').loginAs(admin).json({
-      name: 'Default Timeout Server',
-      identifier: `srv-to-def-${Date.now()}`,
-      serverPort: 25591,
-    })
+    const defaultRes = await client
+      .post('/api/v1/servers')
+      .loginAs(admin)
+      .json({
+        name: 'Default Timeout Server',
+        identifier: `srv-to-def-${Date.now()}`,
+        serverPort: 25591,
+      })
     defaultRes.assertStatus(201)
     assert.equal((defaultRes.body() as any).data.stopTimeoutSeconds, 60)
 
     // 2. Custom creation with stopTimeoutSeconds: 120
-    const customRes = await client.post('/api/v1/servers').loginAs(admin).json({
-      name: 'Custom Timeout Server',
-      identifier: `srv-to-cust-${Date.now()}`,
-      serverPort: 25592,
-      stopTimeoutSeconds: 120,
-    })
+    const customRes = await client
+      .post('/api/v1/servers')
+      .loginAs(admin)
+      .json({
+        name: 'Custom Timeout Server',
+        identifier: `srv-to-cust-${Date.now()}`,
+        serverPort: 25592,
+        stopTimeoutSeconds: 120,
+      })
     customRes.assertStatus(201)
     const server = (customRes.body() as any).data
     assert.equal(server.stopTimeoutSeconds, 120)
 
     // 3. Update stopTimeoutSeconds to 300 (maximum 5 minutes)
-    const updateRes = await client
-      .patch(`/api/v1/servers/${server.id}`)
-      .loginAs(admin)
-      .json({
-        stopTimeoutSeconds: 300,
-      })
+    const updateRes = await client.patch(`/api/v1/servers/${server.id}`).loginAs(admin).json({
+      stopTimeoutSeconds: 300,
+    })
     updateRes.assertStatus(200)
     assert.equal((updateRes.body() as any).data.stopTimeoutSeconds, 300)
 
     // 4. Exceeding maximum 300 seconds is rejected
-    const overMaxRes = await client
-      .patch(`/api/v1/servers/${server.id}`)
-      .loginAs(admin)
-      .json({
-        stopTimeoutSeconds: 301,
-      })
+    const overMaxRes = await client.patch(`/api/v1/servers/${server.id}`).loginAs(admin).json({
+      stopTimeoutSeconds: 301,
+    })
     overMaxRes.assertStatus(422)
 
     // 5. Below minimum 5 seconds is rejected
-    const underMinRes = await client
-      .patch(`/api/v1/servers/${server.id}`)
-      .loginAs(admin)
-      .json({
-        stopTimeoutSeconds: 4,
-      })
+    const underMinRes = await client.patch(`/api/v1/servers/${server.id}`).loginAs(admin).json({
+      stopTimeoutSeconds: 4,
+    })
     underMinRes.assertStatus(422)
   })
 
@@ -501,12 +501,15 @@ test.group('Minecraft Servers Management', (group) => {
       role: 'admin',
     })
 
-    const createRes = await client.post('/api/v1/servers').loginAs(admin).json({
-      name: 'Stats Server',
-      identifier: `srv-stats-${Date.now()}`,
-      serverPort: 25595,
-      maxMemoryMb: 2048,
-    })
+    const createRes = await client
+      .post('/api/v1/servers')
+      .loginAs(admin)
+      .json({
+        name: 'Stats Server',
+        identifier: `srv-stats-${Date.now()}`,
+        serverPort: 25595,
+        maxMemoryMb: 2048,
+      })
     createRes.assertStatus(201)
     const server = (createRes.body() as any).data
 
