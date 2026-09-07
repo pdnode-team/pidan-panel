@@ -3,19 +3,27 @@ import { BaseTransformer } from '@adonisjs/core/transformers'
 
 export default class McServerTransformer extends BaseTransformer<McServer> {
   toObject() {
-    return this.pick(this.resource, [
-      'id',
-      'name',
-      'identifier',
-      'serverJar',
-      'dockerImage',
-      'minMemoryMb',
-      'maxMemoryMb',
-      'serverPort',
-      'javaArgs',
-      'stopTimeoutSeconds',
-      'createdAt',
-      'updatedAt',
-    ])
+    const data = this.resource
+    return {
+      ...this.pick(data, [
+        'id',
+        'name',
+        'identifier',
+        'serverJar',
+        'dockerImage',
+        'minMemoryMb',
+        'maxMemoryMb',
+        'serverPort',
+        'javaArgs',
+        'stopTimeoutSeconds',
+        'crashBackoffInitialSeconds',
+        'crashBackoffMaxSeconds',
+        'crashMaxRetries',
+        'createdAt',
+        'updatedAt',
+      ]),
+      autoStartOnBoot: Boolean(data.autoStartOnBoot),
+      autoRestartOnCrash: Boolean(data.autoRestartOnCrash),
+    }
   }
 }

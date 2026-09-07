@@ -4,6 +4,7 @@ import { DateTime } from 'luxon'
 import { createRequire } from 'node:module'
 import McContainerService from '#services/mc_container_service'
 import ServerBackupService from '#services/server_backup_service'
+import ServerWatchdogService from '#services/server_watchdog_service'
 import ServerSchedule from '#models/server_schedule'
 
 const req = createRequire(import.meta.resolve('adonisjs-scheduler'))
@@ -13,7 +14,8 @@ const cronParser = req('cron-parser')
 export default class ServerScheduleService {
   constructor(
     protected containerService: McContainerService,
-    protected backupService: ServerBackupService
+    protected backupService: ServerBackupService,
+    protected watchdogService: ServerWatchdogService
   ) {}
 
   /**
@@ -91,17 +93,20 @@ export default class ServerScheduleService {
 
         case 'restart': {
           await this.containerService.restartContainer(server)
+          this.watchdogService.handleServerStarted(server, true)
           message = 'Server restart initiated successfully'
           break
         }
 
         case 'start': {
           await this.containerService.startContainer(server)
+          this.watchdogService.handleServerStarted(server, true)
           message = 'Server started successfully'
           break
         }
 
         case 'stop': {
+          this.watchdogService.handleServerStopped(server)
           await this.containerService.stopContainer(server)
           message = 'Server stopped successfully'
           break

@@ -69,8 +69,26 @@ export default class McServersController {
       })
     }
 
+    const initBackoff = payload.crashBackoffInitialSeconds ?? 5
+    const maxBackoff = payload.crashBackoffMaxSeconds ?? 300
+    if (maxBackoff < initBackoff) {
+      return response.badRequest({
+        errors: [
+          {
+            message:
+              'crashBackoffMaxSeconds must be greater than or equal to crashBackoffInitialSeconds',
+          },
+        ],
+      })
+    }
+
     const server = await McServer.create({
       stopTimeoutSeconds: 60,
+      autoStartOnBoot: false,
+      autoRestartOnCrash: false,
+      crashBackoffInitialSeconds: 5,
+      crashBackoffMaxSeconds: 300,
+      crashMaxRetries: 5,
       ...payload,
     })
 
@@ -107,6 +125,19 @@ export default class McServersController {
     if (maxMem < minMem) {
       return response.badRequest({
         errors: [{ message: 'maxMemoryMb must be greater than or equal to minMemoryMb' }],
+      })
+    }
+
+    const initBackoff = payload.crashBackoffInitialSeconds ?? server.crashBackoffInitialSeconds
+    const maxBackoff = payload.crashBackoffMaxSeconds ?? server.crashBackoffMaxSeconds
+    if (maxBackoff < initBackoff) {
+      return response.badRequest({
+        errors: [
+          {
+            message:
+              'crashBackoffMaxSeconds must be greater than or equal to crashBackoffInitialSeconds',
+          },
+        ],
       })
     }
 

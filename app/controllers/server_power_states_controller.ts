@@ -1,6 +1,7 @@
 import McServer from '#models/mc_server'
 import McContainerService from '#services/mc_container_service'
 import ServerBackupService from '#services/server_backup_service'
+import ServerWatchdogService from '#services/server_watchdog_service'
 import { inject } from '@adonisjs/core'
 import type { HttpContext } from '@adonisjs/core/http'
 
@@ -8,7 +9,8 @@ import type { HttpContext } from '@adonisjs/core/http'
 export default class ServerPowerStatesController {
   constructor(
     protected containerService: McContainerService,
-    protected backupService: ServerBackupService
+    protected backupService: ServerBackupService,
+    protected watchdogService: ServerWatchdogService
   ) {}
 
   /**
@@ -17,7 +19,11 @@ export default class ServerPowerStatesController {
   async show({ params, serialize }: HttpContext) {
     const server = await McServer.findOrFail(params.id)
     const status = await this.containerService.getContainerStatus(server)
-    return serialize(status)
+    const autoRestart = this.watchdogService.getRestartStatus(server.id, server)
+    return serialize({
+      ...status,
+      autoRestart,
+    })
   }
 
   /**
@@ -39,6 +45,7 @@ export default class ServerPowerStatesController {
 
     try {
       await this.containerService.startContainer(server)
+      this.watchdogService.handleServerStarted(server, true)
       return response.created(
         await serialize({
           status: 'starting',
@@ -59,6 +66,8 @@ export default class ServerPowerStatesController {
     const server = await McServer.findOrFail(params.id)
     const forceParam = request.input('force')
     const isForce = forceParam === true || forceParam === 'true' || forceParam === '1'
+
+    this.watchdogService.handleServerStopped(server)
 
     if (isForce) {
       await this.containerService.killContainer(server)
@@ -88,6 +97,7 @@ export default class ServerPowerStatesController {
 
     try {
       await this.containerService.restartContainer(server)
+      this.watchdogService.handleServerStarted(server, true)
       return serialize({
         status: 'restarting',
         message: 'Server container restart initiated',

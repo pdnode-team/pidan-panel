@@ -36,10 +36,21 @@ export default class FakeMcContainerService {
     return 'fake'
   }
 
-  async startContainer(_server: McServer): Promise<void> {}
-  async stopContainer(_server: McServer): Promise<void> {}
-  async killContainer(_server: McServer): Promise<void> {}
-  async restartContainer(_server: McServer): Promise<void> {}
+  startCalls: McServer[] = []
+  stopCalls: McServer[] = []
+
+  async startContainer(server: McServer): Promise<void> {
+    this.startCalls.push(server)
+  }
+  async stopContainer(server: McServer): Promise<void> {
+    this.stopCalls.push(server)
+  }
+  async killContainer(server: McServer): Promise<void> {
+    this.stopCalls.push(server)
+  }
+  async restartContainer(server: McServer): Promise<void> {
+    this.startCalls.push(server)
+  }
   async removeContainer(_server: McServer): Promise<void> {}
   async getContainerStats(_server: McServer): Promise<ContainerStatsSnapshot> {
     return {

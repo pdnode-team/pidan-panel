@@ -20,6 +20,11 @@ export const createMcServerValidator = vine.create(
       .unique({ table: 'mc_servers', column: 'server_port' }),
     javaArgs: vine.string().trim().optional(),
     stopTimeoutSeconds: vine.number().min(5).max(300).optional(),
+    autoStartOnBoot: vine.boolean().optional(),
+    autoRestartOnCrash: vine.boolean().optional(),
+    crashBackoffInitialSeconds: vine.number().min(1).max(60).optional(),
+    crashBackoffMaxSeconds: vine.number().min(5).max(3600).optional(),
+    crashMaxRetries: vine.number().min(0).max(50).optional(),
   })
 )
 
@@ -46,5 +51,10 @@ export const updateMcServerValidator = vine.create(
       .optional(),
     javaArgs: vine.string().trim().nullable().optional(),
     stopTimeoutSeconds: vine.number().min(5).max(300).optional(),
+    autoStartOnBoot: vine.boolean().optional(),
+    autoRestartOnCrash: vine.boolean().optional(),
+    crashBackoffInitialSeconds: vine.number().min(1).max(60).optional(),
+    crashBackoffMaxSeconds: vine.number().min(5).max(3600).optional(),
+    crashMaxRetries: vine.number().min(0).max(50).optional(),
   })
 )

@@ -191,7 +191,7 @@ export default class McContainerService {
 
     try {
       const inspect = await container.inspect()
-      if (!inspect.State.Running) {
+      if (!inspect?.State?.Running) {
         return
       }
 
@@ -211,7 +211,7 @@ export default class McContainerService {
           await new Promise((r) => setTimeout(r, pollInterval))
           try {
             const currentInspect = await container.inspect()
-            if (!currentInspect.State.Running) {
+            if (!currentInspect?.State?.Running) {
               return
             }
           } catch (err: any) {

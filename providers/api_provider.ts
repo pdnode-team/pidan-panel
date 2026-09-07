@@ -67,3 +67,25 @@ declare module '@adonisjs/core/http' {
     serialize: typeof serialize
   }
 }
+
+import type { ApplicationService } from '@adonisjs/core/types'
+import ServerWatchdogService from '#services/server_watchdog_service'
+
+export default class ApiProvider {
+  constructor(protected app: ApplicationService) {}
+
+  async ready() {
+    if (this.app.getEnvironment() === 'web') {
+      const watchdog = await this.app.container.make(ServerWatchdogService)
+      await watchdog.bootstrapAutoStart()
+      await watchdog.startWatchdog()
+    }
+  }
+
+  async shutdown() {
+    if (this.app.getEnvironment() === 'web') {
+      const watchdog = await this.app.container.make(ServerWatchdogService)
+      watchdog.stopWatchdog()
+    }
+  }
+}

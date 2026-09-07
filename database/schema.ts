@@ -45,6 +45,11 @@ export class AuthAccessTokenSchema extends BaseModel {
 
 export class McServerSchema extends BaseModel {
   static $columns = [
+    'autoRestartOnCrash',
+    'autoStartOnBoot',
+    'crashBackoffInitialSeconds',
+    'crashBackoffMaxSeconds',
+    'crashMaxRetries',
     'createdAt',
     'dockerImage',
     'id',
@@ -59,6 +64,16 @@ export class McServerSchema extends BaseModel {
     'updatedAt',
   ] as const
   $columns = McServerSchema.$columns
+  @column()
+  declare autoRestartOnCrash: boolean
+  @column()
+  declare autoStartOnBoot: boolean
+  @column()
+  declare crashBackoffInitialSeconds: number
+  @column()
+  declare crashBackoffMaxSeconds: number
+  @column()
+  declare crashMaxRetries: number
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
   @column()
