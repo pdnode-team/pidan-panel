@@ -2,6 +2,7 @@ import McServer from '#models/mc_server'
 import { createMcServerValidator, updateMcServerValidator } from '#validators/mc_server'
 import McServerTransformer from '#transformers/mc_server_transformer'
 import McContainerService from '#services/mc_container_service'
+import ServerBackupService from '#services/server_backup_service'
 import { inject } from '@adonisjs/core'
 import type { HttpContext } from '@adonisjs/core/http'
 import { mkdir, writeFile, rm } from 'node:fs/promises'
@@ -9,7 +10,10 @@ import { join } from 'node:path'
 
 @inject()
 export default class McServersController {
-  constructor(protected containerService: McContainerService) {}
+  constructor(
+    protected containerService: McContainerService,
+    protected backupService: ServerBackupService
+  ) {}
 
   /**
    * List all registered server instances (Admin sees all; Regular users see assigned only)
@@ -147,6 +151,7 @@ export default class McServersController {
     const shouldDeleteFiles =
       deleteFilesParam === true || deleteFilesParam === 'true' || deleteFilesParam === '1'
 
+    await this.backupService.purgeInstanceBackups(server)
     await this.containerService.removeContainer(server)
     await server.delete()
 

@@ -87,6 +87,25 @@ router
 
             // Server jar download and installation via McJars / URL
             router.post('jars', [controllers.ServerJars, 'store'])
+
+            // Instance snapshots
+            router.get('backups', [controllers.ServerBackups, 'index'])
+            router.post('backups', [controllers.ServerBackups, 'store'])
+            router
+              .get('backups/:backupId', [controllers.ServerBackups, 'show'])
+              .where('backupId', router.matchers.number())
+            router
+              .delete('backups/:backupId', [controllers.ServerBackups, 'destroy'])
+              .where('backupId', router.matchers.number())
+            router
+              .get('backups/:backupId/download', [controllers.ServerBackupDownloads, 'show'])
+              .where('backupId', router.matchers.number())
+            router
+              .post('backups/:backupId/restorations', [
+                controllers.ServerBackupRestorations,
+                'store',
+              ])
+              .where('backupId', router.matchers.number())
           })
           .prefix('servers/:id')
           .where('id', router.matchers.number())

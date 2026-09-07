@@ -23,6 +23,8 @@
 10. [文件管理沙箱 (File Manager)](#10-文件管理沙箱)
 11. [服务端核心安装 (Install Jar)](#11-服务端核心安装)
 12. [用户管理与实例分配 (User Management)](#12-用户管理与实例分配)
+13. [实例快照备份与还原 (Server Backups)](#13-实例快照备份与还原)
+14. [统一错误响应规范](#14-统一错误响应规范)
 
 ---
 
@@ -343,6 +345,7 @@
   - `deleteFiles`: `boolean`，默认 `false`。
     - `false` (默认)：仅销毁 Docker 容器并删除数据库记录，**保留服务器数据目录（地图、存档、配置等）**。
     - `true`（如 `?deleteFiles=true` 或 `{ "deleteFiles": true }`）：在销毁容器和记录的同时，**彻底从磁盘抹除该实例的数据目录**。
+  - 无论 `deleteFiles` 取值如何，该实例的**快照备份都会被丢弃**。若删除后仍需保留备份，请先下载。
 - **鉴权**: `Bearer <token>`
 - **前置条件**: 服务器必须处于停止状态。如果正在运行，将返回 `409 Conflict`。
 - **响应**: `HTTP 204 No Content`
@@ -738,7 +741,91 @@
 
 ---
 
-## 13. 统一错误响应规范
+## 13. 实例快照备份与还原
+
+对某个实例做全量数据快照（世界、插件、配置、核心 jar）。快照文件保存在实例数据目录之外，不会出现在文件管理器里，也不会被打进下一次快照。
+
+能操作该实例的用户（管理员，或 `serverIds` 包含该实例的用户）均可调用本章接口。
+
+### 13.1 获取快照列表（分页）
+- **URL**: `GET /servers/:id/backups`
+- **查询参数**: `page`（默认 1）、`perPage`（默认 20，上限 100）
+- **鉴权**: `Bearer <token>`，且对该实例有访问权
+- **响应示例 (HTTP 200)**:
+  ```json
+  {
+    "data": [
+      {
+        "id": 1,
+        "name": "before-upgrade",
+        "fileName": "backup-20260906-190812-1.zip",
+        "sizeBytes": 1048576,
+        "status": "ready",
+        "errorMessage": null,
+        "createdAt": "2026-09-06T19:08:12.000Z",
+        "updatedAt": "2026-09-06T19:08:12.000Z"
+      }
+    ],
+    "meta": {
+      "total": 1,
+      "perPage": 20,
+      "currentPage": 1
+    }
+  }
+  ```
+  `status` 为 `"pending"` | `"ready"` | `"failed"`。列表按创建时间倒序。
+
+### 13.2 创建快照
+- **URL**: `POST /servers/:id/backups`
+- **请求体 (JSON，均可选)**:
+  | 字段 | 类型 | 说明 |
+  | --- | --- | --- |
+  | `name` | string | 显示名称，1–100 字符。省略时由面板填入时间戳 |
+- **行为**:
+  - 实例已停止：直接拷贝数据目录后打包。
+  - 实例运行中：先发送 `save-all flush` 与 `save-off`，拷贝后再 `save-on`。刷盘失败则中止，不拷贝脏档。
+- **响应**: `HTTP 201`，返回快照对象（成功时 `status` 为 `"ready"`）。
+- **错误**:
+  - `HTTP 409`: `A backup or restore is already in progress for this server.`
+  - `HTTP 400`: `Failed to flush world saves. Backup aborted to avoid a corrupt snapshot.`
+
+### 13.3 获取快照详情
+- **URL**: `GET /servers/:id/backups/:backupId`
+- **响应**: `HTTP 200`，单个快照对象。
+
+### 13.4 下载快照
+- **URL**: `GET /servers/:id/backups/:backupId/download`
+- **响应**: zip 文件（非 `{ data }` 包裹）。仅 `ready` 状态可下载。
+- **错误**: `HTTP 409` `Backup is not ready to download.`
+
+### 13.5 还原快照到当前实例
+- **URL**: `POST /servers/:id/backups/:backupId/restorations`
+- **前置**: 实例必须已停止；快照必须为 `ready`。
+- **行为**: 用该快照覆盖当前实例数据目录。快照之后新增的文件会消失。还原后实例保持停止，需再开机。
+- **响应示例 (HTTP 201)**:
+  ```json
+  {
+    "data": {
+      "status": "restored",
+      "backupId": 1,
+      "message": "Backup restored successfully."
+    }
+  }
+  ```
+- **错误**:
+  - `HTTP 409`: `Cannot restore while the server is running. Please stop the server first.`
+  - `HTTP 409`: `Backup is not ready to restore.`
+  - `HTTP 409`: `A backup or restore is already in progress for this server.`
+  - `HTTP 400`: `Backup archive contains files outside the server directory.`
+
+### 13.6 删除快照
+- **URL**: `DELETE /servers/:id/backups/:backupId`
+- **响应**: `HTTP 204 No Content`
+- **错误**: `HTTP 409` `Cannot delete a backup that is still being created.`
+
+---
+
+## 14. 统一错误响应规范
 
 当接口返回 `4xx` 或 `5xx` 时，统一返回格式如下：
 

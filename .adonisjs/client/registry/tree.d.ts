@@ -62,4 +62,16 @@ export interface ApiDefinition {
   serverJars: {
     store: typeof routes['server_jars.store']
   }
+  serverBackups: {
+    index: typeof routes['server_backups.index']
+    store: typeof routes['server_backups.store']
+    show: typeof routes['server_backups.show']
+    destroy: typeof routes['server_backups.destroy']
+  }
+  serverBackupDownloads: {
+    show: typeof routes['server_backup_downloads.show']
+  }
+  serverBackupRestorations: {
+    store: typeof routes['server_backup_restorations.store']
+  }
 }

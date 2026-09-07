@@ -8,6 +8,10 @@ tmp/*
 data/servers/*
 !data/servers/.gitkeep
 
+# Instance snapshots
+data/backups/*
+!data/backups/.gitkeep
+
 # Secrets
 .env
 .env.local

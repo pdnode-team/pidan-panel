@@ -2,3 +2,6 @@ tasks:
   - name: pidan-panel
     description: Manage single-instance Minecraft server container lifecycle, console, and files.
     track: brief
+  - name: server-backups
+    description: Snapshot, download, delete, and restore full instance data directories.
+    track: brief

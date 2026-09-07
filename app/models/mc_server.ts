@@ -1,7 +1,13 @@
 import app from '@adonisjs/core/services/app'
 import { McServerSchema } from '#database/schema'
+import { hasMany } from '@adonisjs/lucid/orm'
+import type { HasMany } from '@adonisjs/lucid/types/relations'
+import ServerBackup from '#models/server_backup'
 
 export default class McServer extends McServerSchema {
+  @hasMany(() => ServerBackup)
+  declare backups: HasMany<typeof ServerBackup>
+
   /**
    * Dedicated container name for this instance
    */
@@ -14,6 +20,13 @@ export default class McServer extends McServerSchema {
    */
   get dataDirectory(): string {
     return app.makePath('data/servers', this.identifier)
+  }
+
+  /**
+   * Absolute path to the snapshot directory for this instance (outside the data jail)
+   */
+  get backupDirectory(): string {
+    return app.makePath('data/backups', this.identifier)
   }
 
   /**

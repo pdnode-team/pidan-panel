@@ -186,6 +186,42 @@ const routes = {
     tokens: [{"old":"/api/v1/servers/:id/jars","type":0,"val":"api","end":""},{"old":"/api/v1/servers/:id/jars","type":0,"val":"v1","end":""},{"old":"/api/v1/servers/:id/jars","type":0,"val":"servers","end":""},{"old":"/api/v1/servers/:id/jars","type":1,"val":"id","end":""},{"old":"/api/v1/servers/:id/jars","type":0,"val":"jars","end":""}],
     types: placeholder as Registry['server_jars.store']['types'],
   },
+  'server_backups.index': {
+    methods: ["GET","HEAD"],
+    pattern: '/api/v1/servers/:id/backups',
+    tokens: [{"old":"/api/v1/servers/:id/backups","type":0,"val":"api","end":""},{"old":"/api/v1/servers/:id/backups","type":0,"val":"v1","end":""},{"old":"/api/v1/servers/:id/backups","type":0,"val":"servers","end":""},{"old":"/api/v1/servers/:id/backups","type":1,"val":"id","end":""},{"old":"/api/v1/servers/:id/backups","type":0,"val":"backups","end":""}],
+    types: placeholder as Registry['server_backups.index']['types'],
+  },
+  'server_backups.store': {
+    methods: ["POST"],
+    pattern: '/api/v1/servers/:id/backups',
+    tokens: [{"old":"/api/v1/servers/:id/backups","type":0,"val":"api","end":""},{"old":"/api/v1/servers/:id/backups","type":0,"val":"v1","end":""},{"old":"/api/v1/servers/:id/backups","type":0,"val":"servers","end":""},{"old":"/api/v1/servers/:id/backups","type":1,"val":"id","end":""},{"old":"/api/v1/servers/:id/backups","type":0,"val":"backups","end":""}],
+    types: placeholder as Registry['server_backups.store']['types'],
+  },
+  'server_backups.show': {
+    methods: ["GET","HEAD"],
+    pattern: '/api/v1/servers/:id/backups/:backupId',
+    tokens: [{"old":"/api/v1/servers/:id/backups/:backupId","type":0,"val":"api","end":""},{"old":"/api/v1/servers/:id/backups/:backupId","type":0,"val":"v1","end":""},{"old":"/api/v1/servers/:id/backups/:backupId","type":0,"val":"servers","end":""},{"old":"/api/v1/servers/:id/backups/:backupId","type":1,"val":"id","end":""},{"old":"/api/v1/servers/:id/backups/:backupId","type":0,"val":"backups","end":""},{"old":"/api/v1/servers/:id/backups/:backupId","type":1,"val":"backupId","end":""}],
+    types: placeholder as Registry['server_backups.show']['types'],
+  },
+  'server_backups.destroy': {
+    methods: ["DELETE"],
+    pattern: '/api/v1/servers/:id/backups/:backupId',
+    tokens: [{"old":"/api/v1/servers/:id/backups/:backupId","type":0,"val":"api","end":""},{"old":"/api/v1/servers/:id/backups/:backupId","type":0,"val":"v1","end":""},{"old":"/api/v1/servers/:id/backups/:backupId","type":0,"val":"servers","end":""},{"old":"/api/v1/servers/:id/backups/:backupId","type":1,"val":"id","end":""},{"old":"/api/v1/servers/:id/backups/:backupId","type":0,"val":"backups","end":""},{"old":"/api/v1/servers/:id/backups/:backupId","type":1,"val":"backupId","end":""}],
+    types: placeholder as Registry['server_backups.destroy']['types'],
+  },
+  'server_backup_downloads.show': {
+    methods: ["GET","HEAD"],
+    pattern: '/api/v1/servers/:id/backups/:backupId/download',
+    tokens: [{"old":"/api/v1/servers/:id/backups/:backupId/download","type":0,"val":"api","end":""},{"old":"/api/v1/servers/:id/backups/:backupId/download","type":0,"val":"v1","end":""},{"old":"/api/v1/servers/:id/backups/:backupId/download","type":0,"val":"servers","end":""},{"old":"/api/v1/servers/:id/backups/:backupId/download","type":1,"val":"id","end":""},{"old":"/api/v1/servers/:id/backups/:backupId/download","type":0,"val":"backups","end":""},{"old":"/api/v1/servers/:id/backups/:backupId/download","type":1,"val":"backupId","end":""},{"old":"/api/v1/servers/:id/backups/:backupId/download","type":0,"val":"download","end":""}],
+    types: placeholder as Registry['server_backup_downloads.show']['types'],
+  },
+  'server_backup_restorations.store': {
+    methods: ["POST"],
+    pattern: '/api/v1/servers/:id/backups/:backupId/restorations',
+    tokens: [{"old":"/api/v1/servers/:id/backups/:backupId/restorations","type":0,"val":"api","end":""},{"old":"/api/v1/servers/:id/backups/:backupId/restorations","type":0,"val":"v1","end":""},{"old":"/api/v1/servers/:id/backups/:backupId/restorations","type":0,"val":"servers","end":""},{"old":"/api/v1/servers/:id/backups/:backupId/restorations","type":1,"val":"id","end":""},{"old":"/api/v1/servers/:id/backups/:backupId/restorations","type":0,"val":"backups","end":""},{"old":"/api/v1/servers/:id/backups/:backupId/restorations","type":1,"val":"backupId","end":""},{"old":"/api/v1/servers/:id/backups/:backupId/restorations","type":0,"val":"restorations","end":""}],
+    types: placeholder as Registry['server_backup_restorations.store']['types'],
+  },
 } as const satisfies Record<string, AdonisEndpoint>
 
 export { routes }

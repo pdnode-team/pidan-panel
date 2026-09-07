@@ -367,4 +367,76 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/server_jars_controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
+  'server_backups.index': {
+    methods: ["GET","HEAD"]
+    pattern: '/api/v1/servers/:id/backups'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/server_backups_controller').default['index']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/server_backups_controller').default['index']>>>
+    }
+  }
+  'server_backups.store': {
+    methods: ["POST"]
+    pattern: '/api/v1/servers/:id/backups'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#validators/server_backup').createServerBackupValidator)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#validators/server_backup').createServerBackupValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/server_backups_controller').default['store']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/server_backups_controller').default['store']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'server_backups.show': {
+    methods: ["GET","HEAD"]
+    pattern: '/api/v1/servers/:id/backups/:backupId'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue, ParamValue]
+      params: { id: ParamValue; backupId: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/server_backups_controller').default['show']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/server_backups_controller').default['show']>>>
+    }
+  }
+  'server_backups.destroy': {
+    methods: ["DELETE"]
+    pattern: '/api/v1/servers/:id/backups/:backupId'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue, ParamValue]
+      params: { id: ParamValue; backupId: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/server_backups_controller').default['destroy']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/server_backups_controller').default['destroy']>>>
+    }
+  }
+  'server_backup_downloads.show': {
+    methods: ["GET","HEAD"]
+    pattern: '/api/v1/servers/:id/backups/:backupId/download'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue, ParamValue]
+      params: { id: ParamValue; backupId: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/server_backup_downloads_controller').default['show']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/server_backup_downloads_controller').default['show']>>>
+    }
+  }
+  'server_backup_restorations.store': {
+    methods: ["POST"]
+    pattern: '/api/v1/servers/:id/backups/:backupId/restorations'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue, ParamValue]
+      params: { id: ParamValue; backupId: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/server_backup_restorations_controller').default['store']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/server_backup_restorations_controller').default['store']>>>
+    }
+  }
 }

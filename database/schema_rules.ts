@@ -10,6 +10,14 @@ export default {
       tsType: "'admin' | 'user'",
     },
   },
-  tables: {},
+  tables: {
+    server_backups: {
+      columns: {
+        status: {
+          tsType: "'pending' | 'ready' | 'failed'",
+        },
+      },
+    },
+  },
   primaryKey() {},
 } satisfies SchemaRules

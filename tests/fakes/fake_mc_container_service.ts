@@ -1,0 +1,55 @@
+import type McServer from '#models/mc_server'
+import type { ContainerRuntimeState, ContainerStatsSnapshot } from '#services/mc_container_service'
+
+export default class FakeMcContainerService {
+  status: ContainerRuntimeState['status'] = 'stopped'
+  commands: string[] = []
+  saveOffGate: Promise<void> | null = null
+  statusGate: Promise<void> | null = null
+  statusCalls = 0
+  failOn: string | null = null
+
+  async getContainerStatus(server: McServer): Promise<ContainerRuntimeState> {
+    this.statusCalls++
+    if (this.statusGate) {
+      await this.statusGate
+    }
+    return {
+      status: this.status,
+      containerId: this.status === 'running' ? 'fake-container' : null,
+      memoryLimitMb: server.maxMemoryMb,
+      serverPort: server.serverPort,
+    }
+  }
+
+  async sendCommand(_server: McServer, command: string): Promise<void> {
+    this.commands.push(command)
+    if (this.failOn && command === this.failOn) {
+      throw new Error('stdin failed')
+    }
+    if (command === 'save-off' && this.saveOffGate) {
+      await this.saveOffGate
+    }
+  }
+
+  async getDockerEngineVersion(): Promise<string | null> {
+    return 'fake'
+  }
+
+  async startContainer(_server: McServer): Promise<void> {}
+  async stopContainer(_server: McServer): Promise<void> {}
+  async killContainer(_server: McServer): Promise<void> {}
+  async restartContainer(_server: McServer): Promise<void> {}
+  async removeContainer(_server: McServer): Promise<void> {}
+  async getStats(_server: McServer): Promise<ContainerStatsSnapshot> {
+    return {
+      online: this.status === 'running',
+      cpuPercent: 0,
+      memoryUsageBytes: 0,
+      memoryLimitBytes: 0,
+      memoryPercent: 0,
+      networkRxBytes: 0,
+      networkTxBytes: 0,
+    }
+  }
+}

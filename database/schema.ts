@@ -59,6 +59,29 @@ export class McServerSchema extends BaseModel {
   declare updatedAt: DateTime
 }
 
+export class ServerBackupSchema extends BaseModel {
+  static $columns = ['createdAt', 'errorMessage', 'fileName', 'id', 'mcServerId', 'name', 'sizeBytes', 'status', 'updatedAt'] as const
+  $columns = ServerBackupSchema.$columns
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare errorMessage: string | null
+  @column()
+  declare fileName: string
+  @column()
+  declare id: number
+  @column()
+  declare mcServerId: number
+  @column()
+  declare name: string
+  @column()
+  declare sizeBytes: number
+  @column()
+  declare status: 'pending' | 'ready' | 'failed'
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+}
+
 export class UserSchema extends BaseModel {
   static $columns = ['createdAt', 'email', 'fullName', 'id', 'password', 'role', 'serverIds', 'updatedAt'] as const
   $columns = UserSchema.$columns
