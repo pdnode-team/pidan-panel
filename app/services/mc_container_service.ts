@@ -1,5 +1,6 @@
 import Docker from 'dockerode'
 import type McServer from '#models/mc_server'
+import logger from '@adonisjs/core/services/logger'
 import { mkdir, writeFile, access } from 'node:fs/promises'
 import { join } from 'node:path'
 import { constants } from 'node:fs'
@@ -246,8 +247,8 @@ export default class McContainerService {
         path: `/containers/${container.id}/attach?stream=1&stdin=1`,
         method: 'POST',
         headers: {
-          'Connection': 'Upgrade',
-          'Upgrade': 'tcp',
+          Connection: 'Upgrade',
+          Upgrade: 'tcp',
         },
       }
 
@@ -483,10 +484,8 @@ export default class McContainerService {
       if (cpuStats && preCpuStats) {
         const cpuDelta =
           (cpuStats.cpu_usage?.total_usage || 0) - (preCpuStats.cpu_usage?.total_usage || 0)
-        const systemDelta =
-          (cpuStats.system_cpu_usage || 0) - (preCpuStats.system_cpu_usage || 0)
-        const onlineCpus =
-          cpuStats.online_cpus || cpuStats.cpu_usage?.percpu_usage?.length || 1
+        const systemDelta = (cpuStats.system_cpu_usage || 0) - (preCpuStats.system_cpu_usage || 0)
+        const onlineCpus = cpuStats.online_cpus || cpuStats.cpu_usage?.percpu_usage?.length || 1
 
         if (systemDelta > 0 && cpuDelta > 0) {
           const rawPercent = (cpuDelta / systemDelta) * onlineCpus * 100.0
@@ -501,9 +500,7 @@ export default class McContainerService {
       const memoryUsageBytes = Math.max(0, rawUsage - cache)
       const memoryLimitBytes = memStats.limit || fallbackLimitBytes
       const memoryPercent =
-        memoryLimitBytes > 0
-          ? Math.round((memoryUsageBytes / memoryLimitBytes) * 10000) / 100
-          : 0
+        memoryLimitBytes > 0 ? Math.round((memoryUsageBytes / memoryLimitBytes) * 10000) / 100 : 0
 
       // Calculate Network stats
       let networkRxBytes = 0
@@ -564,17 +561,63 @@ export default class McContainerService {
   }
 
   /**
-   * Remove container if exists
+   * Remove container if exists and release bound network ports
    */
   async removeContainer(server: McServer): Promise<void> {
+    const removedIds = new Set<string>()
+
+    // 1. Attempt direct removal by instance dedicated containerName
     try {
       const container = this.getContainer(server)
-      await container.remove({ force: true })
-    } catch (err: any) {
-      if (err?.statusCode === 404 || err?.code === 'ENOENT' || err?.code === 'ECONNREFUSED') {
-        return
+      const inspect = await container.inspect().catch(() => null)
+      if (inspect) {
+        removedIds.add(inspect.Id)
+        await container.remove({ force: true, v: true })
       }
-      throw err
+    } catch (err: any) {
+      if (err?.statusCode !== 404 && err?.code !== 'ENOENT' && err?.code !== 'ECONNREFUSED') {
+        logger.warn(`Failed direct container removal for server ${server.id}: ${err.message}`)
+      }
+    }
+
+    // 2. Comprehensive scan: find and purge any lingering containers associated with
+    // this instance (by identifier name variations or bound host port) to avoid port collisions
+    try {
+      const allContainers = await this.docker.listContainers({ all: true })
+      const targetNames = [
+        `/${server.containerName}`,
+        `/pidan-mc-${server.identifier}`,
+        `/pidan_mc_${server.identifier}`,
+        server.containerName,
+      ]
+
+      for (const info of allContainers) {
+        if (removedIds.has(info.Id)) {
+          continue
+        }
+
+        const matchesName = (info.Names || []).some((n) => targetNames.includes(n))
+        const matchesPort =
+          (info.Names || []).some((n) => n.includes(server.identifier) || n.startsWith('/pidan')) &&
+          (info.Ports || []).some((p) => p.PublicPort === server.serverPort)
+
+        if (matchesName || matchesPort) {
+          try {
+            const lingeringContainer = this.docker.getContainer(info.Id)
+            await lingeringContainer.remove({ force: true, v: true })
+            removedIds.add(info.Id)
+            logger.info(`Purged lingering container ${info.Id} occupying port ${server.serverPort}`)
+          } catch (removeErr: any) {
+            logger.warn(`Failed removing lingering container ${info.Id}: ${removeErr?.message}`)
+          }
+        }
+      }
+    } catch (scanErr: any) {
+      if (scanErr?.code === 'ENOENT' || scanErr?.code === 'ECONNREFUSED') {
+        logger.warn('Docker engine connection unavailable during container cleanup scan.')
+      } else {
+        logger.warn(`Docker container list scan error: ${scanErr?.message}`)
+      }
     }
   }
 }
