@@ -1,4 +1,5 @@
 import McServer from '#models/mc_server'
+import User from '#models/user'
 import { createMcServerValidator, updateMcServerValidator } from '#validators/mc_server'
 import McServerTransformer from '#transformers/mc_server_transformer'
 import McContainerService from '#services/mc_container_service'
@@ -140,10 +141,23 @@ export default class McServersController {
 
     const server = await McServer.findOrFail(params.id)
 
-    const runtime = await this.containerService.getContainerStatus(server)
-    if (runtime.status === 'running') {
+    // 1. Check if backup or restore is currently running for this server
+    if (this.backupService.isInflight(server.id)) {
       return response.conflict({
-        errors: [{ message: 'Cannot delete a running server. Please stop it first.' }],
+        errors: [
+          {
+            message:
+              'Cannot delete server while a backup or restore operation is in progress. Please wait for it to complete.',
+          },
+        ],
+      })
+    }
+
+    // 2. Check if server container is active (running or restarting)
+    const runtime = await this.containerService.getContainerStatus(server)
+    if (runtime.status === 'running' || runtime.status === 'restarting') {
+      return response.conflict({
+        errors: [{ message: 'Cannot delete an active server. Please stop it first.' }],
       })
     }
 
@@ -151,12 +165,32 @@ export default class McServersController {
     const shouldDeleteFiles =
       deleteFilesParam === true || deleteFilesParam === 'true' || deleteFilesParam === '1'
 
+    // 3. Purge instance snapshots (both on-disk archives and database records)
     await this.backupService.purgeInstanceBackups(server)
+
+    // 4. Forcefully remove container(s) and unbind ports
     await this.containerService.removeContainer(server)
+
+    // 5. Clean up assigned server permissions from all users
+    const assignedUsers = await User.query().where('role', 'user')
+    for (const u of assignedUsers) {
+      if (Array.isArray(u.serverIds) && u.serverIds.includes(server.id)) {
+        u.serverIds = u.serverIds.filter((sid) => sid !== server.id)
+        await u.save()
+      }
+    }
+
+    // 6. Delete server database record
     await server.delete()
 
+    // 7. Wipe data directory if requested
     if (shouldDeleteFiles) {
-      await rm(server.dataDirectory, { recursive: true, force: true }).catch(() => {})
+      await rm(server.dataDirectory, {
+        recursive: true,
+        force: true,
+        maxRetries: 3,
+        retryDelay: 100,
+      }).catch(() => {})
     }
 
     return response.noContent()
