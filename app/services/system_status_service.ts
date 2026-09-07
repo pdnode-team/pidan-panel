@@ -25,10 +25,15 @@ export default class SystemStatusService {
 
   constructor(protected containerService: McContainerService) {
     this.lastCpuSample = this.calculateCpuTimes()
-    // Perform background sampling every 2.5 seconds
+    // Perform initial warmup sample after 150ms
+    setTimeout(() => {
+      this.sampleCpu()
+    }, 150).unref?.()
+
+    // Perform steady background sampling every 1000ms (1-second window)
     setInterval(() => {
       this.sampleCpu()
-    }, 2500).unref()
+    }, 1000).unref?.()
   }
 
   protected calculateCpuTimes(): { idle: number; total: number } {
@@ -48,13 +53,19 @@ export default class SystemStatusService {
     const current = this.calculateCpuTimes()
     const deltaTotal = current.total - this.lastCpuSample.total
     const deltaIdle = current.idle - this.lastCpuSample.idle
+    this.lastCpuSample = current
 
     if (deltaTotal > 0) {
-      const usage = ((deltaTotal - deltaIdle) / deltaTotal) * 100
-      this.currentCpuPercent = Number(Math.max(0, Math.min(100, usage)).toFixed(1))
+      const rawUsage = ((deltaTotal - deltaIdle) / deltaTotal) * 100
+      const clamped = Math.max(0, Math.min(100, rawUsage))
+      if (this.currentCpuPercent === 0) {
+        this.currentCpuPercent = Number(clamped.toFixed(1))
+      } else {
+        // Exponential Moving Average (EMA: 0.7 historical, 0.3 current)
+        const smoothed = this.currentCpuPercent * 0.7 + clamped * 0.3
+        this.currentCpuPercent = Number(smoothed.toFixed(1))
+      }
     }
-
-    this.lastCpuSample = current
   }
 
   /**
@@ -106,7 +117,9 @@ export default class SystemStatusService {
    * Retrieve current system status snapshot
    */
   async getStatus(): Promise<SystemStatusData> {
-    this.sampleCpu()
+    if (this.currentCpuPercent === 0) {
+      this.sampleCpu()
+    }
 
     const totalMemoryBytes = os.totalmem()
     const freeMemoryBytes = os.freemem()
