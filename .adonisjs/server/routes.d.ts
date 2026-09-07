@@ -16,6 +16,7 @@ export type ScannedRoutes = {
     'users.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'users.update': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'users.destroy': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'audit_logs.index': { paramsTuple?: []; params?: {} }
     'servers.index': { paramsTuple?: []; params?: {} }
     'servers.store': { paramsTuple?: []; params?: {} }
     'servers.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
@@ -27,6 +28,10 @@ export type ScannedRoutes = {
     'server_power_states.update': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'server_commands.store': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'server_logs.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'server_audit_logs.index': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'server_log_archives.index': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'server_log_archives.download': { paramsTuple: [ParamValue,ParamValue]; params: {'id': ParamValue,'filename': ParamValue} }
+    'server_log_archives.show': { paramsTuple: [ParamValue,ParamValue]; params: {'id': ParamValue,'filename': ParamValue} }
     'server_stats.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'server_files.index': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'server_files.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
@@ -54,10 +59,15 @@ export type ScannedRoutes = {
     'mc_jar_types.show': { paramsTuple: [ParamValue]; params: {'type': ParamValue} }
     'users.index': { paramsTuple?: []; params?: {} }
     'users.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'audit_logs.index': { paramsTuple?: []; params?: {} }
     'servers.index': { paramsTuple?: []; params?: {} }
     'servers.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'server_power_states.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'server_logs.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'server_audit_logs.index': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'server_log_archives.index': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'server_log_archives.download': { paramsTuple: [ParamValue,ParamValue]; params: {'id': ParamValue,'filename': ParamValue} }
+    'server_log_archives.show': { paramsTuple: [ParamValue,ParamValue]; params: {'id': ParamValue,'filename': ParamValue} }
     'server_stats.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'server_files.index': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'server_files.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
@@ -74,10 +84,15 @@ export type ScannedRoutes = {
     'mc_jar_types.show': { paramsTuple: [ParamValue]; params: {'type': ParamValue} }
     'users.index': { paramsTuple?: []; params?: {} }
     'users.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'audit_logs.index': { paramsTuple?: []; params?: {} }
     'servers.index': { paramsTuple?: []; params?: {} }
     'servers.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'server_power_states.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'server_logs.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'server_audit_logs.index': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'server_log_archives.index': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'server_log_archives.download': { paramsTuple: [ParamValue,ParamValue]; params: {'id': ParamValue,'filename': ParamValue} }
+    'server_log_archives.show': { paramsTuple: [ParamValue,ParamValue]; params: {'id': ParamValue,'filename': ParamValue} }
     'server_stats.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'server_files.index': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'server_files.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }

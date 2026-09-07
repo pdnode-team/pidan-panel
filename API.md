@@ -27,7 +27,9 @@
 12. [用户管理与实例分配 (User Management)](#12-用户管理与实例分配)
 13. [实例快照备份与还原 (Server Backups)](#13-实例快照备份与还原)
 14. [实例通用计划任务 (Server Schedules - Cron)](#14-实例通用计划任务)
-15. [统一错误响应规范](#15-统一错误响应规范)
+15. [系统操作审计日志 (Audit Logs)](#15-系统操作审计日志)
+16. [Minecraft 历史日志归档与流式解压 (Log Archives)](#16-minecraft-历史日志归档与流式解压)
+17. [统一错误响应规范](#17-统一错误响应规范)
 
 ---
 
@@ -1028,7 +1030,128 @@
 
 ---
 
-## 15. 统一错误响应规范
+## 15. 系统操作审计日志 (Audit Logs)
+
+记录系统中所有关键操作（命令派发、电源控制、文件变更、备份还原、调度任务、用户管理等），仅追加不可删改。
+
+### 15.1 查询全局审计日志（仅管理员）
+
+- **URL**: `GET /audit-logs`
+- **鉴权**: `Bearer <token>`（需 `admin` 角色）
+- **查询参数（均可选）**:
+  | 参数 | 类型 | 说明 |
+  | --- | --- | --- |
+  | `page` | number | 页码，默认 1 |
+  | `perPage` | number | 每页条数，默认 20，最大 100 |
+  | `category` | string | 筛选类别：`command` / `power` / `file` / `auth` / `server` / `backup` / `schedule` / `user` |
+  | `status` | string | `success` / `failed` |
+  | `userId` | number | 按操作用户筛选 |
+  | `serverId` | number | 按实例筛选 |
+  | `search` | string | 全文关键词搜索（动作、详情、用户邮箱、错误信息） |
+  | `dateFrom` | string | ISO 日期，如 `2026-09-01` |
+  | `dateTo` | string | ISO 日期 |
+- **响应示例 (HTTP 200)**:
+  ```json
+  {
+    "data": [
+      {
+        "id": 42,
+        "userId": 1,
+        "userEmail": "admin@pidan.local",
+        "userFullName": "Admin",
+        "mcServerId": 3,
+        "category": "command",
+        "action": "command.dispatch",
+        "details": { "command": "say Hello World" },
+        "status": "success",
+        "errorMessage": null,
+        "ipAddress": "127.0.0.1",
+        "createdAt": "2026-09-07T10:00:00.000Z"
+      }
+    ],
+    "metadata": {
+      "total": 1,
+      "perPage": 20,
+      "currentPage": 1,
+      "lastPage": 1
+    }
+  }
+  ```
+
+### 15.2 查询单实例审计日志（管理员或已授权用户）
+
+- **URL**: `GET /servers/:id/audit-logs`
+- **鉴权**: `Bearer <token>`（需拥有对应实例访问权）
+- **查询参数**: 同 15.1（`serverId` 自动限定为路由中的 `:id`）
+- **权限**:
+  - 管理员：可查看该实例全部日志
+  - 普通用户：仅可查看自己被授权的实例日志，不可越权访问其他实例
+  - **任何角色不可通过 API 删除或修改审计日志**
+
+---
+
+## 16. Minecraft 历史日志归档与流式解压 (Log Archives)
+
+访问服务器 `data/<identifier>/logs/` 目录下的 `.log` 和 `.log.gz` 日志文件，支持在线流式解压分页与关键词搜索，以及直接下载原始归档包。
+
+> **鉴权**: 所有以下接口均需 `Bearer <token>`，且操作者须对该实例有访问权。
+
+### 16.1 列出归档文件列表
+
+- **URL**: `GET /servers/:id/logs/archives`
+- **响应示例 (HTTP 200)**:
+  ```json
+  {
+    "data": [
+      { "fileName": "latest.log", "sizeBytes": 12340, "modifiedAt": "2026-09-07T10:00:00.000Z", "isCompressed": false },
+      { "fileName": "2026-09-06-1.log.gz", "sizeBytes": 5120, "modifiedAt": "2026-09-06T23:59:00.000Z", "isCompressed": true }
+    ]
+  }
+  ```
+  - `latest.log` 始终排列在最前面，其余按修改时间从新到旧排序。
+  - 仅列出 `.log` 和 `.log.gz` 文件，其他文件忽略。
+
+### 16.2 在线流式读取/搜索日志（支持分页与关键词）
+
+- **URL**: `GET /servers/:id/logs/archives/:filename`
+- **查询参数（均可选）**:
+  | 参数 | 类型 | 说明 |
+  | --- | --- | --- |
+  | `page` | number | 页码，默认 1 |
+  | `perPage` | number | 每页行数，默认 200，最大 1000 |
+  | `search` | string | 关键词过滤（大小写不敏感） |
+  | `tail` | boolean | `true` 时返回最后 `perPage` 行（类似 `tail -n`） |
+- **安全限制**:
+  - 单次最多扫描 50,000 行（防止解压炸弹）
+  - 只允许 `.log` 和 `.log.gz` 后缀，路径穿越尝试返回 `400`
+- **响应示例 (HTTP 200)**:
+  ```json
+  {
+    "data": {
+      "fileName": "2026-09-06-1.log.gz",
+      "totalMatchedLines": 4,
+      "lines": [
+        "[08:00:00] [Server thread/INFO]: Booting server",
+        "[08:00:01] [Server thread/ERROR]: Failed to load"
+      ],
+      "page": 1,
+      "perPage": 200,
+      "hasMore": false
+    }
+  }
+  ```
+
+### 16.3 下载原始归档文件
+
+- **URL**: `GET /servers/:id/logs/archives/:filename/download`
+- **响应**: 原始文件二进制流
+  - `.log.gz` 文件 → `Content-Type: application/gzip`
+  - `.log` 文件 → `Content-Type: text/plain`
+  - 响应头携带 `Content-Disposition: attachment; filename="<filename>"`
+
+---
+
+## 17. 统一错误响应规范
 
 当接口返回 `4xx` 或 `5xx` 时，统一返回格式如下：
 

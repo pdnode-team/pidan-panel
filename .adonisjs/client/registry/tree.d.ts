@@ -30,6 +30,9 @@ export interface ApiDefinition {
     update: typeof routes['users.update']
     destroy: typeof routes['users.destroy']
   }
+  auditLogs: {
+    index: typeof routes['audit_logs.index']
+  }
   servers: {
     index: typeof routes['servers.index']
     store: typeof routes['servers.store']
@@ -48,6 +51,14 @@ export interface ApiDefinition {
   }
   serverLogs: {
     show: typeof routes['server_logs.show']
+  }
+  serverAuditLogs: {
+    index: typeof routes['server_audit_logs.index']
+  }
+  serverLogArchives: {
+    index: typeof routes['server_log_archives.index']
+    download: typeof routes['server_log_archives.download']
+    show: typeof routes['server_log_archives.show']
   }
   serverStats: {
     show: typeof routes['server_stats.show']

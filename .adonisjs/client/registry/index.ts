@@ -78,6 +78,12 @@ const routes = {
     tokens: [{"old":"/api/v1/users/:id","type":0,"val":"api","end":""},{"old":"/api/v1/users/:id","type":0,"val":"v1","end":""},{"old":"/api/v1/users/:id","type":0,"val":"users","end":""},{"old":"/api/v1/users/:id","type":1,"val":"id","end":""}],
     types: placeholder as Registry['users.destroy']['types'],
   },
+  'audit_logs.index': {
+    methods: ["GET","HEAD"],
+    pattern: '/api/v1/audit-logs',
+    tokens: [{"old":"/api/v1/audit-logs","type":0,"val":"api","end":""},{"old":"/api/v1/audit-logs","type":0,"val":"v1","end":""},{"old":"/api/v1/audit-logs","type":0,"val":"audit-logs","end":""}],
+    types: placeholder as Registry['audit_logs.index']['types'],
+  },
   'servers.index': {
     methods: ["GET","HEAD"],
     pattern: '/api/v1/servers',
@@ -143,6 +149,30 @@ const routes = {
     pattern: '/api/v1/servers/:id/logs',
     tokens: [{"old":"/api/v1/servers/:id/logs","type":0,"val":"api","end":""},{"old":"/api/v1/servers/:id/logs","type":0,"val":"v1","end":""},{"old":"/api/v1/servers/:id/logs","type":0,"val":"servers","end":""},{"old":"/api/v1/servers/:id/logs","type":1,"val":"id","end":""},{"old":"/api/v1/servers/:id/logs","type":0,"val":"logs","end":""}],
     types: placeholder as Registry['server_logs.show']['types'],
+  },
+  'server_audit_logs.index': {
+    methods: ["GET","HEAD"],
+    pattern: '/api/v1/servers/:id/audit-logs',
+    tokens: [{"old":"/api/v1/servers/:id/audit-logs","type":0,"val":"api","end":""},{"old":"/api/v1/servers/:id/audit-logs","type":0,"val":"v1","end":""},{"old":"/api/v1/servers/:id/audit-logs","type":0,"val":"servers","end":""},{"old":"/api/v1/servers/:id/audit-logs","type":1,"val":"id","end":""},{"old":"/api/v1/servers/:id/audit-logs","type":0,"val":"audit-logs","end":""}],
+    types: placeholder as Registry['server_audit_logs.index']['types'],
+  },
+  'server_log_archives.index': {
+    methods: ["GET","HEAD"],
+    pattern: '/api/v1/servers/:id/logs/archives',
+    tokens: [{"old":"/api/v1/servers/:id/logs/archives","type":0,"val":"api","end":""},{"old":"/api/v1/servers/:id/logs/archives","type":0,"val":"v1","end":""},{"old":"/api/v1/servers/:id/logs/archives","type":0,"val":"servers","end":""},{"old":"/api/v1/servers/:id/logs/archives","type":1,"val":"id","end":""},{"old":"/api/v1/servers/:id/logs/archives","type":0,"val":"logs","end":""},{"old":"/api/v1/servers/:id/logs/archives","type":0,"val":"archives","end":""}],
+    types: placeholder as Registry['server_log_archives.index']['types'],
+  },
+  'server_log_archives.download': {
+    methods: ["GET","HEAD"],
+    pattern: '/api/v1/servers/:id/logs/archives/:filename/download',
+    tokens: [{"old":"/api/v1/servers/:id/logs/archives/:filename/download","type":0,"val":"api","end":""},{"old":"/api/v1/servers/:id/logs/archives/:filename/download","type":0,"val":"v1","end":""},{"old":"/api/v1/servers/:id/logs/archives/:filename/download","type":0,"val":"servers","end":""},{"old":"/api/v1/servers/:id/logs/archives/:filename/download","type":1,"val":"id","end":""},{"old":"/api/v1/servers/:id/logs/archives/:filename/download","type":0,"val":"logs","end":""},{"old":"/api/v1/servers/:id/logs/archives/:filename/download","type":0,"val":"archives","end":""},{"old":"/api/v1/servers/:id/logs/archives/:filename/download","type":1,"val":"filename","end":""},{"old":"/api/v1/servers/:id/logs/archives/:filename/download","type":0,"val":"download","end":""}],
+    types: placeholder as Registry['server_log_archives.download']['types'],
+  },
+  'server_log_archives.show': {
+    methods: ["GET","HEAD"],
+    pattern: '/api/v1/servers/:id/logs/archives/:filename',
+    tokens: [{"old":"/api/v1/servers/:id/logs/archives/:filename","type":0,"val":"api","end":""},{"old":"/api/v1/servers/:id/logs/archives/:filename","type":0,"val":"v1","end":""},{"old":"/api/v1/servers/:id/logs/archives/:filename","type":0,"val":"servers","end":""},{"old":"/api/v1/servers/:id/logs/archives/:filename","type":1,"val":"id","end":""},{"old":"/api/v1/servers/:id/logs/archives/:filename","type":0,"val":"logs","end":""},{"old":"/api/v1/servers/:id/logs/archives/:filename","type":0,"val":"archives","end":""},{"old":"/api/v1/servers/:id/logs/archives/:filename","type":1,"val":"filename","end":""}],
+    types: placeholder as Registry['server_log_archives.show']['types'],
   },
   'server_stats.show': {
     methods: ["GET","HEAD"],

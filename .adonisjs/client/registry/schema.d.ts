@@ -151,6 +151,18 @@ export interface Registry {
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/users_controller').default['destroy']>>>
     }
   }
+  'audit_logs.index': {
+    methods: ["GET","HEAD"]
+    pattern: '/api/v1/audit-logs'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: ExtractQueryForGet<InferInput<(typeof import('#validators/audit_log').auditLogFilterValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/audit_logs_controller').default['index']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/audit_logs_controller').default['index']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
   'servers.index': {
     methods: ["GET","HEAD"]
     pattern: '/api/v1/servers'
@@ -281,6 +293,54 @@ export interface Registry {
       query: {}
       response: ExtractResponse<Awaited<ReturnType<import('#controllers/server_logs_controller').default['show']>>>
       errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/server_logs_controller').default['show']>>>
+    }
+  }
+  'server_audit_logs.index': {
+    methods: ["GET","HEAD"]
+    pattern: '/api/v1/servers/:id/audit-logs'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQueryForGet<InferInput<(typeof import('#validators/audit_log').auditLogFilterValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/server_audit_logs_controller').default['index']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/server_audit_logs_controller').default['index']>>> | { status: 422; response: { errors: SimpleError[] } }
+    }
+  }
+  'server_log_archives.index': {
+    methods: ["GET","HEAD"]
+    pattern: '/api/v1/servers/:id/logs/archives'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/server_log_archives_controller').default['index']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/server_log_archives_controller').default['index']>>>
+    }
+  }
+  'server_log_archives.download': {
+    methods: ["GET","HEAD"]
+    pattern: '/api/v1/servers/:id/logs/archives/:filename/download'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue, ParamValue]
+      params: { id: ParamValue; filename: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/server_log_archives_controller').default['download']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/server_log_archives_controller').default['download']>>>
+    }
+  }
+  'server_log_archives.show': {
+    methods: ["GET","HEAD"]
+    pattern: '/api/v1/servers/:id/logs/archives/:filename'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue, ParamValue]
+      params: { id: ParamValue; filename: ParamValue }
+      query: ExtractQueryForGet<InferInput<(typeof import('#validators/audit_log').logArchiveFilterValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/server_log_archives_controller').default['show']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/server_log_archives_controller').default['show']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
   'server_stats.show': {

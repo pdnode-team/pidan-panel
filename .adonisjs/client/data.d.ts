@@ -5,13 +5,19 @@
 
 /// <reference path="./manifest.d.ts" />
 import type { InferData, InferVariants } from '@adonisjs/core/types/transformers'
+import type AuditLogTransformer from '#transformers/audit_log_transformer'
 import type McServerTransformer from '#transformers/mc_server_transformer'
 import type ServerBackupTransformer from '#transformers/server_backup_transformer'
 import type ServerFileTransformer from '#transformers/server_file_transformer'
+import type ServerLogArchiveTransformer from '#transformers/server_log_archive_transformer'
 import type ServerScheduleTransformer from '#transformers/server_schedule_transformer'
 import type UserTransformer from '#transformers/user_transformer'
 
 export namespace Data {
+  export type AuditLog = InferData<AuditLogTransformer>
+  export namespace AuditLog {
+    export type Variants = InferVariants<AuditLogTransformer>
+  }
   export type McServer = InferData<McServerTransformer>
   export namespace McServer {
     export type Variants = InferVariants<McServerTransformer>
@@ -23,6 +29,10 @@ export namespace Data {
   export type ServerFile = InferData<ServerFileTransformer>
   export namespace ServerFile {
     export type Variants = InferVariants<ServerFileTransformer>
+  }
+  export type ServerLogArchive = InferData<ServerLogArchiveTransformer>
+  export namespace ServerLogArchive {
+    export type Variants = InferVariants<ServerLogArchiveTransformer>
   }
   export type ServerSchedule = InferData<ServerScheduleTransformer>
   export namespace ServerSchedule {

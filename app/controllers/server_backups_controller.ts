@@ -7,9 +7,14 @@ import ServerBackupTransformer from '#transformers/server_backup_transformer'
 import { createServerBackupValidator } from '#validators/server_backup'
 import BackupOperationException from '#exceptions/backup_operation_exception'
 
+import AuditLogService from '#services/audit_log_service'
+
 @inject()
 export default class ServerBackupsController {
-  constructor(protected backups: ServerBackupService) {}
+  constructor(
+    protected backups: ServerBackupService,
+    protected auditLogService: AuditLogService
+  ) {}
 
   async index({ params, request, serialize }: HttpContext) {
     const server = await McServer.findOrFail(params.id)
@@ -29,17 +34,39 @@ export default class ServerBackupsController {
     return serialize(ServerBackupTransformer.transform(backup))
   }
 
-  async store({ params, request, response, serialize }: HttpContext) {
+  async store({ params, request, response, serialize, auth }: HttpContext) {
     const server = await McServer.findOrFail(params.id)
     const payload = await request.validateUsing(createServerBackupValidator)
     const backup = await this.backups.createBackup(server, payload.name, payload.excludes)
+
+    await this.auditLogService.record({
+      user: auth?.user,
+      mcServerId: server.id,
+      category: 'backup',
+      action: 'backup.create',
+      details: { backupId: backup.id, name: backup.name },
+      status: 'success',
+      ipAddress: request.ip(),
+    })
+
     return response.created(await serialize(ServerBackupTransformer.transform(backup)))
   }
 
-  async destroy({ params, response }: HttpContext) {
+  async destroy({ params, request, response, auth }: HttpContext) {
     const server = await McServer.findOrFail(params.id)
     const backup = await this.findOwnedBackup(params.id, params.backupId)
     await this.backups.deleteBackup(server, backup)
+
+    await this.auditLogService.record({
+      user: auth?.user,
+      mcServerId: server.id,
+      category: 'backup',
+      action: 'backup.delete',
+      details: { backupId: backup.id, name: backup.name },
+      status: 'success',
+      ipAddress: request.ip(),
+    })
+
     return response.noContent()
   }
 

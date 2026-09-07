@@ -71,6 +71,9 @@ router
           .where('id', router.matchers.number())
           .use('*', middleware.admin())
 
+        // Global audit logs (Admin only)
+        router.get('audit-logs', [controllers.AuditLogs, 'index']).use(middleware.admin())
+
         // Servers resource (index, store, show, update, destroy)
         router
           .resource('servers', controllers.McServers)
@@ -91,6 +94,17 @@ router
 
             // Real-time console logs (SSE stream)
             router.get('logs', [controllers.ServerLogs, 'show'])
+
+            // Server audit logs (Admin or assigned owner)
+            router.get('audit-logs', [controllers.ServerAuditLogs, 'index'])
+
+            // Historical log archives (.log.gz and .log)
+            router.get('logs/archives', [controllers.ServerLogArchives, 'index'])
+            router.get('logs/archives/:filename/download', [
+              controllers.ServerLogArchives,
+              'download',
+            ])
+            router.get('logs/archives/:filename', [controllers.ServerLogArchives, 'show'])
 
             // Hardware resource metrics snapshot and SSE stream
             router.get('stats', [controllers.ServerStats, 'show'])
