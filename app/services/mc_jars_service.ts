@@ -1,6 +1,6 @@
 import type McServer from '#models/mc_server'
 import AdmZip from 'adm-zip'
-import { join } from 'node:path'
+import { join, resolve, normalize, sep } from 'node:path'
 import { createWriteStream } from 'node:fs'
 import { mkdir, rename, unlink } from 'node:fs/promises'
 import { Readable } from 'node:stream'
@@ -84,7 +84,8 @@ export default class McJarsService {
     for (const [ver, val] of Object.entries(data.versions as Record<string, any>)) {
       const downloadUrl = val?.latest?.jarUrl || val?.latest?.zipUrl
       if (downloadUrl) {
-        const isZip = downloadUrl.toLowerCase().split('?')[0].endsWith('.zip') || !val?.latest?.jarUrl
+        const isZip =
+          downloadUrl.toLowerCase().split('?')[0].endsWith('.zip') || !val?.latest?.jarUrl
         versions[ver] = {
           version: ver,
           type: val.type,
@@ -133,6 +134,10 @@ export default class McJarsService {
       downloadUrl = targetVersion.jarUrl
     }
 
+    if (!downloadUrl.startsWith('http://') && !downloadUrl.startsWith('https://')) {
+      throw new Error('Invalid download URL scheme: only HTTP and HTTPS are permitted.')
+    }
+
     // Ensure server data directory exists
     await mkdir(server.dataDirectory, { recursive: true })
 
@@ -163,12 +168,39 @@ export default class McJarsService {
 
         // Decompress zip archive directly into server data directory with overwrite: true
         const zip = new AdmZip(tempZipPath)
-        await new Promise<void>((resolve, reject) => {
+
+        // Zip slip protection: verify all entries stay inside dataDirectory
+        const destRoot = resolve(server.dataDirectory)
+        const normalizedRoot = normalize(destRoot).toLowerCase()
+        const prefix = normalizedRoot.endsWith(sep) ? normalizedRoot : normalizedRoot + sep
+
+        for (const entry of zip.getEntries()) {
+          const normalizedEntry = entry.entryName.replace(/\\/g, '/')
+          if (
+            normalizedEntry.startsWith('/') ||
+            /^[a-zA-Z]:/.test(normalizedEntry) ||
+            normalizedEntry.split('/').includes('..')
+          ) {
+            throw new Error(
+              'Corrupted or malicious zip archive: entries cannot escape server directory.'
+            )
+          }
+
+          const dest = resolve(destRoot, normalizedEntry)
+          const normalizedDest = normalize(dest).toLowerCase()
+          if (normalizedDest !== normalizedRoot && !normalizedDest.startsWith(prefix)) {
+            throw new Error(
+              'Corrupted or malicious zip archive: entries cannot escape server directory.'
+            )
+          }
+        }
+
+        await new Promise<void>((resolveExtract, rejectExtract) => {
           zip.extractAllToAsync(server.dataDirectory, true, false, (err) => {
             if (err) {
-              reject(err)
+              rejectExtract(err)
             } else {
-              resolve()
+              resolveExtract()
             }
           })
         })
