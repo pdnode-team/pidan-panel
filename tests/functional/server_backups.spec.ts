@@ -3,6 +3,7 @@ import testUtils from '@adonisjs/core/services/test_utils'
 import { mkdir, readFile, rm, writeFile, access } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { crc32 } from 'node:zlib'
+import AdmZip from 'adm-zip'
 import User from '#models/user'
 import ServerBackup from '#models/server_backup'
 import McContainerService from '#services/mc_container_service'
@@ -594,5 +595,88 @@ test.group('Server Backups', (group) => {
 
     const remainingBackups = await ServerBackup.query().where('mcServerId', server.id)
     assert.lengthOf(remainingBackups, 0, 'Database ServerBackup records should be purged when server is deleted')
+  })
+
+  test('creates a snapshot with wildcard excludes parameter, skipping ignored files and preserving unignored files', async ({
+    client,
+    assert,
+  }) => {
+    const admin = await createAdmin()
+    const createRes = await client.post('/api/v1/servers').loginAs(admin).json({
+      name: 'Backup Test Exclude',
+      identifier: 'bk-excludes',
+      serverPort: 25565,
+    })
+    createRes.assertStatus(201)
+    const server = payload(createRes).data
+    createdIdentifiers.push(server.identifier)
+
+    await seedFiles(server.identifier, {
+      'world/level.dat': 'level_data',
+      'logs/latest.log': 'log_data',
+      'logs/2026-09-07.log.gz': 'compressed_log',
+      'crash-reports/crash.txt': 'crash_data',
+      'cache/temp.cache': 'cache_data',
+      'temporary.tmp': 'temporary_data',
+      'server.properties': 'motd=test',
+    })
+
+    const backupRes = await client
+      .post(`/api/v1/servers/${server.id}/backups`)
+      .loginAs(admin)
+      .json({
+        name: 'Selective Backup',
+        excludes: ['logs/**', '*.tmp', 'crash-reports', 'cache/**'],
+      })
+    backupRes.assertStatus(201)
+    const backup = payload(backupRes).data
+    const zipPath = join(process.cwd(), 'data', 'backups', server.identifier, backup.fileName)
+    const zip = new AdmZip(zipPath)
+    const entryNames = zip.getEntries().map((e) => e.entryName.replace(/\\/g, '/'))
+
+    // Unignored files must exist in the archive
+    assert.include(entryNames, 'world/level.dat')
+    assert.include(entryNames, 'server.properties')
+
+    // Excluded files must not exist in the archive
+    assert.notInclude(entryNames, 'logs/latest.log')
+    assert.notInclude(entryNames, 'logs/2026-09-07.log.gz')
+    assert.notInclude(entryNames, 'crash-reports/crash.txt')
+    assert.notInclude(entryNames, 'cache/temp.cache')
+    assert.notInclude(entryNames, 'temporary.tmp')
+  })
+
+  test('security validation rejects unsafe excludes patterns', async ({ client }) => {
+    const admin = await createAdmin()
+    const createRes = await client.post('/api/v1/servers').loginAs(admin).json({
+      name: 'Backup Test Security',
+      identifier: 'bk-sec-excludes',
+      serverPort: 25565,
+    })
+    createRes.assertStatus(201)
+    const server = payload(createRes).data
+    createdIdentifiers.push(server.identifier)
+
+    const testCases = [
+      ['../escape'],
+      ['sub/../../escape'],
+      ['/etc/passwd'],
+      ['\\windows\\system32'],
+      ['C:\\secret'],
+      ['evil\0null'],
+      ['a'.repeat(121)],
+      Array(51).fill('logs/**'),
+    ]
+
+    for (const badExcludes of testCases) {
+      const res = await client
+        .post(`/api/v1/servers/${server.id}/backups`)
+        .loginAs(admin)
+        .json({
+          name: 'Invalid Pattern Backup',
+          excludes: badExcludes,
+        })
+      res.assertStatus(422)
+    }
   })
 })

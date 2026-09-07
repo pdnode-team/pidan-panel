@@ -32,7 +32,7 @@ export default class ServerBackupsController {
   async store({ params, request, response, serialize }: HttpContext) {
     const server = await McServer.findOrFail(params.id)
     const payload = await request.validateUsing(createServerBackupValidator)
-    const backup = await this.backups.createBackup(server, payload.name)
+    const backup = await this.backups.createBackup(server, payload.name, payload.excludes)
     return response.created(await serialize(ServerBackupTransformer.transform(backup)))
   }
 

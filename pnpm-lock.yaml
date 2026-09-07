@@ -53,6 +53,9 @@ importers:
       luxon:
         specifier: ^3.7.2
         version: 3.7.2
+      picomatch:
+        specifier: ^4.0.7
+        version: 4.0.7
       reflect-metadata:
         specifier: ^0.2.2
         version: 0.2.2
@@ -96,6 +99,9 @@ importers:
       '@types/node':
         specifier: ~26.2.0
         version: 26.2.0
+      '@types/picomatch':
+        specifier: ^4.0.3
+        version: 4.0.3
       eslint:
         specifier: ^10.9.0
         version: 10.9.1(supports-color@10.2.2)
@@ -934,6 +940,9 @@ packages:
 
   '@types/normalize-package-data@2.4.4':
     resolution: {integrity: sha512-37i+OaWTh9qeK4LSHPsyRC7NahnGotNuZvjLSgcPzblpHB3rrCJxAOgI5gCdKm7coonsaX1Of0ILiTcnZjbfxA==}
+
+  '@types/picomatch@4.0.3':
+    resolution: {integrity: sha512-iG0T6+nYJ9FAPmx9SsUlnwcq1ZVRuCXcVEvWnntoPlrOpwtSTKNDC9uVAxTsC3PUvJ+99n4RpAcNgBbHX3JSnQ==}
 
   '@types/pluralize@0.0.33':
     resolution: {integrity: sha512-JOqsl+ZoCpP4e8TDke9W79FDcSgPAR0l6pixx2JHkhnRjvShyYiAYw2LVsnA7K08Y6DeOnaU6ujmENO4os/cYg==}
@@ -3646,6 +3655,8 @@ snapshots:
       undici-types: 8.3.0
 
   '@types/normalize-package-data@2.4.4': {}
+
+  '@types/picomatch@4.0.3': {}
 
   '@types/pluralize@0.0.33': {}
 

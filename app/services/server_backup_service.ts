@@ -4,9 +4,10 @@ import { DateTime } from 'luxon'
 import { createWriteStream } from 'node:fs'
 import { access, cp, mkdir, readFile, rename, rm, stat } from 'node:fs/promises'
 import { createRequire } from 'node:module'
-import { basename, dirname, join, normalize, resolve, sep } from 'node:path'
+import { basename, dirname, join, normalize, relative, resolve, sep } from 'node:path'
 import { pipeline } from 'node:stream/promises'
 import AdmZip from 'adm-zip'
+import picomatch from 'picomatch'
 import McContainerService from '#services/mc_container_service'
 import McServer from '#models/mc_server'
 import ServerBackup from '#models/server_backup'
@@ -40,7 +41,11 @@ export default class ServerBackupService {
     await ServerBackup.query().where('mcServerId', server.id).delete()
   }
 
-  async createBackup(server: McServer, name?: string): Promise<ServerBackup> {
+  async createBackup(
+    server: McServer,
+    name?: string,
+    excludes: string[] = []
+  ): Promise<ServerBackup> {
     this.acquire(server.id, 'backup')
 
     const displayName = name?.trim() || DateTime.now().toFormat('yyyy-MM-dd HH:mm:ss')
@@ -82,11 +87,19 @@ export default class ServerBackupService {
         }
       }
 
+      const { isExcluded, normalizedExcludes } = this.buildExcludeMatcher(excludes)
+
       const staging = app.makePath('tmp', 'backup-staging', `${server.identifier}-${backup.id}`)
       await rm(staging, { recursive: true, force: true }).catch(() => {})
       await mkdir(server.dataDirectory, { recursive: true })
       await mkdir(staging, { recursive: true })
-      await cp(server.dataDirectory, staging, { recursive: true })
+      await cp(server.dataDirectory, staging, {
+        recursive: true,
+        filter: (src) => {
+          const rel = relative(server.dataDirectory, src)
+          return !isExcluded(rel)
+        },
+      })
 
       if (wasRunning) {
         await docker.sendCommand(server, 'save-on').catch(() => {})
@@ -95,7 +108,7 @@ export default class ServerBackupService {
 
       await mkdir(server.backupDirectory, { recursive: true })
       const zipPath = this.archivePath(server, backup)
-      await this.zipDirectory(staging, zipPath)
+      await this.zipDirectory(staging, zipPath, normalizedExcludes)
       await rm(staging, { recursive: true, force: true }).catch(() => {})
 
       const zipStat = await stat(zipPath)
@@ -239,7 +252,45 @@ export default class ServerBackupService {
     return new Promise((resolveSleep) => setTimeout(resolveSleep, ms))
   }
 
-  protected async zipDirectory(sourceDir: string, outPath: string) {
+  protected buildExcludeMatcher(excludes: string[] = []): {
+    isExcluded: (relPath: string) => boolean
+    normalizedExcludes: string[]
+  } {
+    const defaultExcludes = ['**/session.lock', 'session.lock']
+    const combined = [...defaultExcludes, ...excludes]
+    const normalized: string[] = []
+
+    for (const raw of combined) {
+      const clean = raw.trim().replace(/\\/g, '/').replace(/\/+$/, '')
+      if (!clean) continue
+      normalized.push(clean)
+      if (!clean.includes('/')) {
+        normalized.push(`**/${clean}`)
+      }
+      if (!clean.includes('*') && !clean.endsWith('/**')) {
+        normalized.push(`${clean}/**`)
+        normalized.push(`**/${clean}/**`)
+      }
+    }
+
+    const matcher = picomatch(normalized, { dot: true })
+
+    const isExcluded = (relPath: string): boolean => {
+      const normalizedPath = relPath.replace(/\\/g, '/').replace(/^\/+/, '')
+      if (!normalizedPath || normalizedPath === '.') {
+        return false
+      }
+      return matcher(normalizedPath)
+    }
+
+    return { isExcluded, normalizedExcludes: normalized }
+  }
+
+  protected async zipDirectory(
+    sourceDir: string,
+    outPath: string,
+    ignorePatterns: string[] = []
+  ) {
     await mkdir(dirname(outPath), { recursive: true })
     const output = createWriteStream(outPath)
     const archive = archiver('zip', { zlib: { level: 9 } })
@@ -253,7 +304,7 @@ export default class ServerBackupService {
     archive.glob('**/*', {
       cwd: sourceDir,
       dot: true,
-      ignore: ['**/session.lock', 'session.lock'],
+      ignore: ['**/session.lock', 'session.lock', ...ignorePatterns],
     })
     await archive.finalize()
     await done
