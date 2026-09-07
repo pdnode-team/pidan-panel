@@ -1,5 +1,5 @@
 import type McServer from '#models/mc_server'
-import { resolve, dirname, normalize } from 'node:path'
+import { resolve, dirname, normalize, sep, basename } from 'node:path'
 import { readdir, stat, readFile, writeFile, rm, rename, mkdir } from 'node:fs/promises'
 import type { MultipartFile } from '@adonisjs/core/bodyparser'
 
@@ -21,8 +21,9 @@ export default class ServerFileManagerService {
 
     const normalizedBase = normalize(base).toLowerCase()
     const normalizedTarget = normalize(target).toLowerCase()
+    const prefix = normalizedBase.endsWith(sep) ? normalizedBase : normalizedBase + sep
 
-    if (!normalizedTarget.startsWith(normalizedBase)) {
+    if (normalizedTarget !== normalizedBase && !normalizedTarget.startsWith(prefix)) {
       throw new Error('Access Denied: Path traversal outside server directory is forbidden.')
     }
 
@@ -115,8 +116,9 @@ export default class ServerFileManagerService {
   ): Promise<void> {
     const targetDir = this.resolveJailedPath(server, targetRelativeDir)
     await mkdir(targetDir, { recursive: true })
+    const safeName = basename(file.clientName)
     await file.move(targetDir, {
-      name: file.clientName,
+      name: safeName,
       overwrite: true,
     })
   }
