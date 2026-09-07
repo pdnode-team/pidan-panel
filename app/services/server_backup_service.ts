@@ -160,7 +160,26 @@ export default class ServerBackupService {
       }
 
       if (hadData) {
-        await rename(dataDir, aside)
+        let moved = false
+        for (let attempt = 0; attempt < 5; attempt++) {
+          try {
+            await rename(dataDir, aside)
+            moved = true
+            break
+          } catch (e: any) {
+            if (e?.code === 'EPERM' || e?.code === 'EBUSY') {
+              await this.sleep(100)
+            } else {
+              throw e
+            }
+          }
+        }
+        if (!moved) {
+          await cp(dataDir, aside, { recursive: true, force: true })
+          await rm(dataDir, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 }).catch(
+            () => {}
+          )
+        }
       }
 
       try {

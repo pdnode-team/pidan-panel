@@ -11,7 +11,7 @@ import FakeMcContainerService from '#tests/fakes/fake_mc_container_service'
 const createdIdentifiers: string[] = []
 
 function payload(res: { body: () => unknown }): any {
-  return payload(res)
+  return res.body()
 }
 
 async function createAdmin() {
@@ -591,5 +591,8 @@ test.group('Server Backups', (group) => {
       .then(() => false)
       .catch(() => true)
     assert.isTrue(backupsGone)
+
+    const remainingBackups = await ServerBackup.query().where('mcServerId', server.id)
+    assert.lengthOf(remainingBackups, 0, 'Database ServerBackup records should be purged when server is deleted')
   })
 })

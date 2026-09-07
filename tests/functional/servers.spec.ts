@@ -349,4 +349,84 @@ test.group('Minecraft Servers Management', (group) => {
     assert.isString(status.containerEngine)
     assert.isNotEmpty(status.containerEngine)
   })
+
+  test('deleting an instance permits recreating with the same serverPort immediately', async ({
+    client,
+    assert,
+  }) => {
+    const admin = await User.create({
+      fullName: 'Admin Recreate',
+      email: 'admin-recreate@pidan.local',
+      password: 'password123',
+      role: 'admin',
+    })
+
+    const targetPort = 25588
+    const id1 = `test-recreate-1-${Date.now()}`
+
+    // 1. Create initial server
+    const create1 = await client.post('/api/v1/servers').loginAs(admin).json({
+      name: 'Server 1',
+      identifier: id1,
+      serverPort: targetPort,
+    })
+    create1.assertStatus(201)
+    const server1 = (create1.body() as any).data
+
+    // 2. Delete server 1
+    const delRes = await client.delete(`/api/v1/servers/${server1.id}`).loginAs(admin)
+    delRes.assertStatus(204)
+
+    // 3. Immediately recreate server 2 using the same port
+    const id2 = `test-recreate-2-${Date.now()}`
+    const create2 = await client.post('/api/v1/servers').loginAs(admin).json({
+      name: 'Server 2',
+      identifier: id2,
+      serverPort: targetPort,
+    })
+    create2.assertStatus(201)
+    const server2 = (create2.body() as any).data
+    assert.equal(server2.serverPort, targetPort)
+  })
+
+  test('deleting an instance automatically strips its id from assigned users serverIds', async ({
+    client,
+    assert,
+  }) => {
+    const admin = await User.create({
+      fullName: 'Admin Sync',
+      email: 'admin-sync@pidan.local',
+      password: 'password123',
+      role: 'admin',
+    })
+
+    // 1. Create a server
+    const createRes = await client.post('/api/v1/servers').loginAs(admin).json({
+      name: 'Server For User Sync',
+      identifier: `sync-srv-${Date.now()}`,
+      serverPort: 25589,
+    })
+    createRes.assertStatus(201)
+    const server = (createRes.body() as any).data
+
+    // 2. Create a normal user and assign this server + a dummy server
+    const normalUser = await User.create({
+      fullName: 'Assigned User',
+      email: 'assigned-user@pidan.local',
+      password: 'password123',
+      role: 'user',
+      serverIds: [server.id, 99999],
+    })
+
+    assert.include(normalUser.serverIds, server.id)
+
+    // 3. Delete the server
+    const delRes = await client.delete(`/api/v1/servers/${server.id}`).loginAs(admin)
+    delRes.assertStatus(204)
+
+    // 4. Reload user and verify server.id has been stripped
+    await normalUser.refresh()
+    assert.notInclude(normalUser.serverIds, server.id)
+    assert.deepEqual(normalUser.serverIds, [99999])
+  })
 })
