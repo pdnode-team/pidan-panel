@@ -1,7 +1,7 @@
 import Docker from 'dockerode'
 import type McServer from '#models/mc_server'
 import logger from '@adonisjs/core/services/logger'
-import { mkdir, writeFile, access } from 'node:fs/promises'
+import { mkdir, writeFile, access, readdir, stat } from 'node:fs/promises'
 import { join } from 'node:path'
 import { constants } from 'node:fs'
 import type { Readable } from 'node:stream'
@@ -19,10 +19,12 @@ export interface ContainerStatsSnapshot {
   online: boolean
   cpuPercent: number
   memoryUsageBytes: number
+  memoryBytes: number
   memoryLimitBytes: number
   memoryPercent: number
   networkRxBytes: number
   networkTxBytes: number
+  diskBytes: number
 }
 
 export default class McContainerService {
@@ -498,19 +500,64 @@ export default class McContainerService {
     }
   }
 
+  protected diskUsageCache = new Map<number, { bytes: number; timestamp: number }>()
+
+  /**
+   * Calculate recursive directory size on disk in bytes
+   */
+  async calculateDirSize(dirPath: string): Promise<number> {
+    try {
+      let totalSize = 0
+      const entries = await readdir(dirPath, { withFileTypes: true, recursive: true })
+      for (const entry of entries) {
+        if (entry.isFile()) {
+          try {
+            const parentDir = entry.parentPath || (entry as any).path || dirPath
+            const entryPath = join(parentDir, entry.name)
+            const fileStat = await stat(entryPath)
+            totalSize += fileStat.size
+          } catch {
+            // Ignore transient file stat errors
+          }
+        }
+      }
+      return totalSize
+    } catch {
+      return 0
+    }
+  }
+
+  /**
+   * Get server data directory size on disk with 30s TTL cache
+   */
+  async getDiskBytes(server: McServer): Promise<number> {
+    const cached = this.diskUsageCache.get(server.id)
+    const now = Date.now()
+    if (cached && now - cached.timestamp < 30_000) {
+      return cached.bytes
+    }
+
+    const bytes = await this.calculateDirSize(server.dataDirectory)
+    this.diskUsageCache.set(server.id, { bytes, timestamp: now })
+    return bytes
+  }
+
   /**
    * Fetch current hardware resource utilization metrics snapshot
    */
   async getContainerStats(server: McServer): Promise<ContainerStatsSnapshot> {
+    const diskBytes = await this.getDiskBytes(server)
     const fallbackLimitBytes = server.maxMemoryMb * 1024 * 1024
     const defaultOfflineStats: ContainerStatsSnapshot = {
       online: false,
       cpuPercent: 0,
       memoryUsageBytes: 0,
+      memoryBytes: 0,
       memoryLimitBytes: fallbackLimitBytes,
       memoryPercent: 0,
       networkRxBytes: 0,
       networkTxBytes: 0,
+      diskBytes,
     }
 
     try {
@@ -561,10 +608,12 @@ export default class McContainerService {
         online: true,
         cpuPercent,
         memoryUsageBytes,
+        memoryBytes: memoryUsageBytes,
         memoryLimitBytes,
         memoryPercent,
         networkRxBytes,
         networkTxBytes,
+        diskBytes,
       }
     } catch (err: any) {
       if (err?.statusCode === 404) {

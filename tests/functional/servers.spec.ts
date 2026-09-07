@@ -489,4 +489,39 @@ test.group('Minecraft Servers Management', (group) => {
       })
     underMinRes.assertStatus(422)
   })
+
+  test('GET /api/v1/servers/:id/stats returns metrics aligned with frontend spec (cpuPercent, memoryBytes, memoryLimitBytes, diskBytes)', async ({
+    client,
+    assert,
+  }) => {
+    const admin = await User.create({
+      fullName: 'Admin Stats',
+      email: 'admin-stats@pidan.local',
+      password: 'password123',
+      role: 'admin',
+    })
+
+    const createRes = await client.post('/api/v1/servers').loginAs(admin).json({
+      name: 'Stats Server',
+      identifier: `srv-stats-${Date.now()}`,
+      serverPort: 25595,
+      maxMemoryMb: 2048,
+    })
+    createRes.assertStatus(201)
+    const server = (createRes.body() as any).data
+
+    const statsRes = await client.get(`/api/v1/servers/${server.id}/stats`).loginAs(admin)
+    statsRes.assertStatus(200)
+    const stats = (statsRes.body() as any).data
+
+    assert.isDefined(stats.cpuPercent)
+    assert.isNumber(stats.cpuPercent)
+    assert.isDefined(stats.memoryBytes)
+    assert.isNumber(stats.memoryBytes)
+    assert.isDefined(stats.memoryLimitBytes)
+    assert.isNumber(stats.memoryLimitBytes)
+    assert.equal(stats.memoryLimitBytes, 2048 * 1024 * 1024)
+    assert.isDefined(stats.diskBytes)
+    assert.isNumber(stats.diskBytes)
+  })
 })

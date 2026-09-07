@@ -41,15 +41,25 @@ export default class FakeMcContainerService {
   async killContainer(_server: McServer): Promise<void> {}
   async restartContainer(_server: McServer): Promise<void> {}
   async removeContainer(_server: McServer): Promise<void> {}
-  async getStats(_server: McServer): Promise<ContainerStatsSnapshot> {
+  async getContainerStats(_server: McServer): Promise<ContainerStatsSnapshot> {
     return {
       online: this.status === 'running',
       cpuPercent: 0,
       memoryUsageBytes: 0,
+      memoryBytes: 0,
       memoryLimitBytes: 0,
       memoryPercent: 0,
       networkRxBytes: 0,
       networkTxBytes: 0,
+      diskBytes: 0,
     }
+  }
+
+  async getStats(server: McServer): Promise<ContainerStatsSnapshot> {
+    return this.getContainerStats(server)
+  }
+
+  async getDiskBytes(_server: McServer): Promise<number> {
+    return 0
   }
 }

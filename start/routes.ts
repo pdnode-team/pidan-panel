@@ -10,14 +10,31 @@
 import { middleware } from '#start/kernel'
 import router from '@adonisjs/core/services/router'
 import { controllers } from '#generated/controllers'
+import { healthChecks } from '#start/health'
 
 router.get('/', () => {
   return { name: 'pidan-panel', status: 'operational' }
 })
 
+router.get('/health', async ({ response }) => {
+  const report = await healthChecks.run()
+  if (report.isHealthy) {
+    return response.ok(report)
+  }
+  return response.serviceUnavailable(report)
+})
+
 router
   .group(() => {
-    // Public auth and setup routes
+    // Public health, auth and setup routes
+    router.get('health', async ({ response }) => {
+      const report = await healthChecks.run()
+      if (report.isHealthy) {
+        return response.ok(report)
+      }
+      return response.serviceUnavailable(report)
+    })
+
     router
       .group(() => {
         router.post('signup', [controllers.NewAccount, 'store'])
