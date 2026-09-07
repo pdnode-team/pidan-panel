@@ -25,8 +25,19 @@ export default class ServerBackupService {
     return join(server.backupDirectory, backup.fileName)
   }
 
+  isInflight(serverId: number): boolean {
+    return inflight.has(serverId)
+  }
+
   async purgeInstanceBackups(server: McServer): Promise<void> {
-    await rm(server.backupDirectory, { recursive: true, force: true }).catch(() => {})
+    inflight.delete(server.id)
+    await rm(server.backupDirectory, {
+      recursive: true,
+      force: true,
+      maxRetries: 3,
+      retryDelay: 100,
+    }).catch(() => {})
+    await ServerBackup.query().where('mcServerId', server.id).delete()
   }
 
   async createBackup(server: McServer, name?: string): Promise<ServerBackup> {
