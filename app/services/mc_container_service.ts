@@ -263,12 +263,32 @@ export default class McContainerService {
       const req = transport.request(optsf)
 
       let isSettled = false
+      let timeoutTimer: NodeJS.Timeout | null = null
+
+      const cleanup = () => {
+        if (timeoutTimer) {
+          clearTimeout(timeoutTimer)
+          timeoutTimer = null
+        }
+      }
+
       const onError = (err: Error) => {
         if (!isSettled) {
           isSettled = true
+          cleanup()
           reject(err)
         }
       }
+
+      timeoutTimer = setTimeout(() => {
+        if (!isSettled) {
+          isSettled = true
+          try {
+            req.destroy(new Error('Timed out waiting to attach and send command to container.'))
+          } catch {}
+          reject(new Error('Command execution timed out.'))
+        }
+      }, 5000)
 
       req.once('error', onError)
 
@@ -283,6 +303,7 @@ export default class McContainerService {
           setTimeout(() => {
             if (!isSettled) {
               isSettled = true
+              cleanup()
               try {
                 socket.destroy()
               } catch {}
@@ -537,26 +558,45 @@ export default class McContainerService {
     onStats: (stats: ContainerStatsSnapshot) => void
   ): Promise<() => void> {
     let active = true
+    let timer: ReturnType<typeof setTimeout> | null = null
 
-    const emitStats = async () => {
+    const scheduleNext = () => {
       if (!active) return
-      try {
-        const stats = await this.getContainerStats(server)
-        if (active) {
-          onStats(stats)
+      timer = setTimeout(async () => {
+        if (!active) return
+        try {
+          const stats = await this.getContainerStats(server)
+          if (active) {
+            onStats(stats)
+          }
+        } catch {
+          // Suppress transient collection errors
+        } finally {
+          if (active) {
+            scheduleNext()
+          }
         }
-      } catch {
-        // Suppress transient collection errors
-      }
+      }, 1500)
     }
 
     // Emit initial snapshot immediately
-    await emitStats()
-    const timer = setInterval(emitStats, 1500)
+    try {
+      const initial = await this.getContainerStats(server)
+      if (active) {
+        onStats(initial)
+      }
+    } catch {
+      // Suppress transient initial error
+    }
+
+    scheduleNext()
 
     return () => {
       active = false
-      clearInterval(timer)
+      if (timer) {
+        clearTimeout(timer)
+        timer = null
+      }
     }
   }
 
