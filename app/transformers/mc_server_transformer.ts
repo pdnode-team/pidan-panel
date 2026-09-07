@@ -13,6 +13,7 @@ export default class McServerTransformer extends BaseTransformer<McServer> {
       'maxMemoryMb',
       'serverPort',
       'javaArgs',
+      'stopTimeoutSeconds',
       'createdAt',
       'updatedAt',
     ])

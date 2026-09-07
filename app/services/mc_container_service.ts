@@ -171,23 +171,47 @@ export default class McContainerService {
   /**
    * Stop container gracefully, fallback to docker stop
    */
-  async stopContainer(server: McServer, timeoutSeconds: number = 15): Promise<void> {
+  async stopContainer(server: McServer, timeoutSeconds?: number): Promise<void> {
     const container = this.getContainer(server)
+    const effectiveTimeout = Math.max(
+      5,
+      Math.min(300, timeoutSeconds ?? (server as any).stopTimeoutSeconds ?? 60)
+    )
+
     try {
       const inspect = await container.inspect()
       if (!inspect.State.Running) {
         return
       }
 
-      // Try sending "stop\n" to stdin
+      let sentStop = false
       try {
         await this.sendCommand(server, 'stop')
+        sentStop = true
       } catch {
         // Fallback directly to container stop
       }
 
-      // Wait for exit or timeout
-      await container.stop({ t: timeoutSeconds }).catch(() => {})
+      if (sentStop) {
+        // Wait for container to shut down naturally after /stop command
+        const pollInterval = process.env.NODE_ENV === 'test' ? 50 : 1000
+        const startTime = Date.now()
+        while (Date.now() - startTime < effectiveTimeout * 1000) {
+          await new Promise((r) => setTimeout(r, pollInterval))
+          try {
+            const currentInspect = await container.inspect()
+            if (!currentInspect.State.Running) {
+              return
+            }
+          } catch (err: any) {
+            if (err?.statusCode === 404) return
+            throw err
+          }
+        }
+      }
+
+      // If /stop failed or didn't exit within the grace period, trigger Docker container stop
+      await container.stop({ t: 10 }).catch(() => {})
     } catch (err: any) {
       if (err?.statusCode === 404) {
         return

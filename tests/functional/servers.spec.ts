@@ -429,4 +429,64 @@ test.group('Minecraft Servers Management', (group) => {
     assert.notInclude(normalUser.serverIds, server.id)
     assert.deepEqual(normalUser.serverIds, [99999])
   })
+
+  test('supports configurable stopTimeoutSeconds up to 300 seconds and defaults to 60', async ({
+    client,
+    assert,
+  }) => {
+    const admin = await User.create({
+      fullName: 'Admin Timeout',
+      email: 'admin-timeout@pidan.local',
+      password: 'password123',
+      role: 'admin',
+    })
+
+    // 1. Default creation has stopTimeoutSeconds: 60
+    const defaultRes = await client.post('/api/v1/servers').loginAs(admin).json({
+      name: 'Default Timeout Server',
+      identifier: `srv-to-def-${Date.now()}`,
+      serverPort: 25591,
+    })
+    defaultRes.assertStatus(201)
+    assert.equal((defaultRes.body() as any).data.stopTimeoutSeconds, 60)
+
+    // 2. Custom creation with stopTimeoutSeconds: 120
+    const customRes = await client.post('/api/v1/servers').loginAs(admin).json({
+      name: 'Custom Timeout Server',
+      identifier: `srv-to-cust-${Date.now()}`,
+      serverPort: 25592,
+      stopTimeoutSeconds: 120,
+    })
+    customRes.assertStatus(201)
+    const server = (customRes.body() as any).data
+    assert.equal(server.stopTimeoutSeconds, 120)
+
+    // 3. Update stopTimeoutSeconds to 300 (maximum 5 minutes)
+    const updateRes = await client
+      .patch(`/api/v1/servers/${server.id}`)
+      .loginAs(admin)
+      .json({
+        stopTimeoutSeconds: 300,
+      })
+    updateRes.assertStatus(200)
+    assert.equal((updateRes.body() as any).data.stopTimeoutSeconds, 300)
+
+    // 4. Exceeding maximum 300 seconds is rejected
+    const overMaxRes = await client
+      .patch(`/api/v1/servers/${server.id}`)
+      .loginAs(admin)
+      .json({
+        stopTimeoutSeconds: 301,
+      })
+    overMaxRes.assertStatus(422)
+
+    // 5. Below minimum 5 seconds is rejected
+    const underMinRes = await client
+      .patch(`/api/v1/servers/${server.id}`)
+      .loginAs(admin)
+      .json({
+        stopTimeoutSeconds: 4,
+      })
+    underMinRes.assertStatus(422)
+  })
 })

@@ -69,7 +69,10 @@ export default class McServersController {
       })
     }
 
-    const server = await McServer.create(payload)
+    const server = await McServer.create({
+      stopTimeoutSeconds: 60,
+      ...payload,
+    })
 
     // Initialize dedicated server data directory with eula.txt
     await mkdir(server.dataDirectory, { recursive: true })
