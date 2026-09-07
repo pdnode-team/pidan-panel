@@ -103,38 +103,29 @@ test.group('Users & Instance Assignment Permissions', (group) => {
 
     // 2. Admin creates 3 servers: Server A, Server B, Server C
     const idA = `server-a-${Date.now()}`
-    const serverARes = await client
-      .post('/api/v1/servers')
-      .loginAs(admin)
-      .json({
-        name: 'Server A',
-        identifier: idA,
-        serverPort: 25572,
-      })
+    const serverARes = await client.post('/api/v1/servers').loginAs(admin).json({
+      name: 'Server A',
+      identifier: idA,
+      serverPort: 25572,
+    })
     serverARes.assertStatus(201)
     const serverA = (serverARes.body() as any).data
 
     const idB = `server-b-${Date.now()}`
-    const serverBRes = await client
-      .post('/api/v1/servers')
-      .loginAs(admin)
-      .json({
-        name: 'Server B',
-        identifier: idB,
-        serverPort: 25573,
-      })
+    const serverBRes = await client.post('/api/v1/servers').loginAs(admin).json({
+      name: 'Server B',
+      identifier: idB,
+      serverPort: 25573,
+    })
     serverBRes.assertStatus(201)
     const serverB = (serverBRes.body() as any).data
 
     const idC = `server-c-${Date.now()}`
-    const serverCRes = await client
-      .post('/api/v1/servers')
-      .loginAs(admin)
-      .json({
-        name: 'Server C',
-        identifier: idC,
-        serverPort: 25574,
-      })
+    const serverCRes = await client.post('/api/v1/servers').loginAs(admin).json({
+      name: 'Server C',
+      identifier: idC,
+      serverPort: 25574,
+    })
     serverCRes.assertStatus(201)
     const serverC = (serverCRes.body() as any).data
 
@@ -158,14 +149,11 @@ test.group('Users & Instance Assignment Permissions', (group) => {
     })
 
     // 4. Regular user CANNOT create server
-    const userCreateRes = await client
-      .post('/api/v1/servers')
-      .loginAs(user1)
-      .json({
-        name: 'Illegal Server',
-        identifier: 'illegal-srv',
-        serverPort: 25575,
-      })
+    const userCreateRes = await client.post('/api/v1/servers').loginAs(user1).json({
+      name: 'Illegal Server',
+      identifier: 'illegal-srv',
+      serverPort: 25575,
+    })
     userCreateRes.assertStatus(403)
 
     // 5. User 1 calls GET /servers -> sees Server A & Server B, NOT Server C

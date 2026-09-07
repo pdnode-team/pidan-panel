@@ -8,7 +8,18 @@ import { BaseModel, column } from '@adonisjs/lucid/orm'
 import { DateTime } from 'luxon'
 
 export class AuthAccessTokenSchema extends BaseModel {
-  static $columns = ['abilities', 'createdAt', 'expiresAt', 'hash', 'id', 'lastUsedAt', 'name', 'tokenableId', 'type', 'updatedAt'] as const
+  static $columns = [
+    'abilities',
+    'createdAt',
+    'expiresAt',
+    'hash',
+    'id',
+    'lastUsedAt',
+    'name',
+    'tokenableId',
+    'type',
+    'updatedAt',
+  ] as const
   $columns = AuthAccessTokenSchema.$columns
   @column()
   declare abilities: string
@@ -33,7 +44,19 @@ export class AuthAccessTokenSchema extends BaseModel {
 }
 
 export class McServerSchema extends BaseModel {
-  static $columns = ['createdAt', 'dockerImage', 'id', 'identifier', 'javaArgs', 'maxMemoryMb', 'minMemoryMb', 'name', 'serverJar', 'serverPort', 'updatedAt'] as const
+  static $columns = [
+    'createdAt',
+    'dockerImage',
+    'id',
+    'identifier',
+    'javaArgs',
+    'maxMemoryMb',
+    'minMemoryMb',
+    'name',
+    'serverJar',
+    'serverPort',
+    'updatedAt',
+  ] as const
   $columns = McServerSchema.$columns
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
@@ -60,7 +83,17 @@ export class McServerSchema extends BaseModel {
 }
 
 export class ServerBackupSchema extends BaseModel {
-  static $columns = ['createdAt', 'errorMessage', 'fileName', 'id', 'mcServerId', 'name', 'sizeBytes', 'status', 'updatedAt'] as const
+  static $columns = [
+    'createdAt',
+    'errorMessage',
+    'fileName',
+    'id',
+    'mcServerId',
+    'name',
+    'sizeBytes',
+    'status',
+    'updatedAt',
+  ] as const
   $columns = ServerBackupSchema.$columns
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
@@ -83,7 +116,16 @@ export class ServerBackupSchema extends BaseModel {
 }
 
 export class UserSchema extends BaseModel {
-  static $columns = ['createdAt', 'email', 'fullName', 'id', 'password', 'role', 'serverIds', 'updatedAt'] as const
+  static $columns = [
+    'createdAt',
+    'email',
+    'fullName',
+    'id',
+    'password',
+    'role',
+    'serverIds',
+    'updatedAt',
+  ] as const
   $columns = UserSchema.$columns
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime

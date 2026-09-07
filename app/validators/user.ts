@@ -46,5 +46,3 @@ export const updateUserValidator = vine.create({
   role: vine.enum(['admin', 'user']).optional(),
   serverIds: vine.array(vine.number().positive()).optional(),
 })
-
-

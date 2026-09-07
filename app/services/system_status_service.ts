@@ -93,11 +93,7 @@ export default class SystemStatusService {
   protected getLoadAverage(cpuPercent: number): [number, number, number] {
     const load = os.loadavg()
     if (load && (load[0] > 0 || load[1] > 0 || load[2] > 0)) {
-      return [
-        Number(load[0].toFixed(2)),
-        Number(load[1].toFixed(2)),
-        Number(load[2].toFixed(2)),
-      ]
+      return [Number(load[0].toFixed(2)), Number(load[1].toFixed(2)), Number(load[2].toFixed(2))]
     }
 
     // Windows fallback: extrapolate reasonable 1m, 5m, 15m load from core count & CPU %
