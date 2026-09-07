@@ -22,9 +22,9 @@ class DockerCheck extends BaseCheck {
           version,
         })
       }
-      return Result.warning('Docker engine is currently unreachable')
+      return Result.failed('Docker engine is currently unreachable')
     } catch (error: any) {
-      return Result.warning(error?.message || 'Docker check error')
+      return Result.failed(error?.message || 'Docker engine is currently unreachable', error)
     }
   }
 }

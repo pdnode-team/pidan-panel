@@ -1,5 +1,7 @@
 import { test } from '@japa/runner'
 import testUtils from '@adonisjs/core/services/test_utils'
+import McContainerService from '#services/mc_container_service'
+import FakeMcContainerService from '#tests/fakes/fake_mc_container_service'
 
 test.group('Global Health Checks', (group) => {
   group.each.setup(() => testUtils.db().truncate())
@@ -31,5 +33,25 @@ test.group('Global Health Checks', (group) => {
     const body = res.body()
     assert.isDefined(body.isHealthy)
     assert.isArray(body.checks)
+  })
+
+  test('returns 503 and failure report when Docker engine is unreachable', async ({
+    client,
+    assert,
+    swap,
+  }) => {
+    const fake = new FakeMcContainerService()
+    fake.getDockerEngineVersion = async () => null
+    swap(McContainerService, fake as any)
+
+    const res = await client.get('/api/v1/health')
+    res.assertStatus(503)
+    const body = res.body()
+    assert.isFalse(body.isHealthy)
+
+    const dockerCheck = body.checks.find((c: any) => c.name === 'Docker engine check')
+    assert.isDefined(dockerCheck)
+    assert.equal(dockerCheck.status, 'error')
+    assert.include(dockerCheck.message, 'Docker engine is currently unreachable')
   })
 })
