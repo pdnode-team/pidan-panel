@@ -1,11 +1,15 @@
 import McServer from '#models/mc_server'
 import McContainerService from '#services/mc_container_service'
+import ServerBackupService from '#services/server_backup_service'
 import { inject } from '@adonisjs/core'
 import type { HttpContext } from '@adonisjs/core/http'
 
 @inject()
 export default class ServerPowerStatesController {
-  constructor(protected containerService: McContainerService) {}
+  constructor(
+    protected containerService: McContainerService,
+    protected backupService: ServerBackupService
+  ) {}
 
   /**
    * View live container power state and metrics
@@ -21,6 +25,18 @@ export default class ServerPowerStatesController {
    */
   async store({ params, response, serialize }: HttpContext) {
     const server = await McServer.findOrFail(params.id)
+
+    if (this.backupService.isInflight(server.id)) {
+      return response.conflict({
+        errors: [
+          {
+            message:
+              'Cannot start server container while a backup or restore operation is in progress.',
+          },
+        ],
+      })
+    }
+
     try {
       await this.containerService.startContainer(server)
       return response.created(
@@ -58,6 +74,18 @@ export default class ServerPowerStatesController {
    */
   async update({ params, response, serialize }: HttpContext) {
     const server = await McServer.findOrFail(params.id)
+
+    if (this.backupService.isInflight(server.id)) {
+      return response.conflict({
+        errors: [
+          {
+            message:
+              'Cannot restart server container while a backup or restore operation is in progress.',
+          },
+        ],
+      })
+    }
+
     try {
       await this.containerService.restartContainer(server)
       return serialize({

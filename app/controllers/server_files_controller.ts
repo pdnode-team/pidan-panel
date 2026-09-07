@@ -6,12 +6,16 @@ import {
   renameServerFileValidator,
 } from '#validators/server_file'
 import ServerFileTransformer from '#transformers/server_file_transformer'
+import ServerBackupService from '#services/server_backup_service'
 import { inject } from '@adonisjs/core'
 import type { HttpContext } from '@adonisjs/core/http'
 
 @inject()
 export default class ServerFilesController {
-  constructor(protected fileManager: ServerFileManagerService) {}
+  constructor(
+    protected fileManager: ServerFileManagerService,
+    protected backupService: ServerBackupService
+  ) {}
 
   /**
    * List files and folders in directory
@@ -58,6 +62,16 @@ export default class ServerFilesController {
   async store({ params, request, response, serialize }: HttpContext) {
     const server = await McServer.findOrFail(params.id)
 
+    if (this.backupService.isInflight(server.id)) {
+      return response.conflict({
+        errors: [
+          {
+            message: 'Cannot modify files while a backup or restore operation is in progress.',
+          },
+        ],
+      })
+    }
+
     // Check if multipart file upload
     const file = request.file('file')
     if (file) {
@@ -99,6 +113,17 @@ export default class ServerFilesController {
    */
   async update({ params, request, response, serialize }: HttpContext) {
     const server = await McServer.findOrFail(params.id)
+
+    if (this.backupService.isInflight(server.id)) {
+      return response.conflict({
+        errors: [
+          {
+            message: 'Cannot modify files while a backup or restore operation is in progress.',
+          },
+        ],
+      })
+    }
+
     const payload = await request.validateUsing(renameServerFileValidator)
 
     try {
@@ -119,6 +144,17 @@ export default class ServerFilesController {
    */
   async destroy({ params, request, response }: HttpContext) {
     const server = await McServer.findOrFail(params.id)
+
+    if (this.backupService.isInflight(server.id)) {
+      return response.conflict({
+        errors: [
+          {
+            message: 'Cannot modify files while a backup or restore operation is in progress.',
+          },
+        ],
+      })
+    }
+
     const relativePath = request.input('path')
     if (!relativePath) {
       return response.badRequest({

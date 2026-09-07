@@ -57,6 +57,12 @@ export default class ServerBackupService {
 
     const docker = await this.containers()
     const runtime = await docker.getContainerStatus(server)
+    if (runtime.status === 'restarting') {
+      throw new BackupOperationException(
+        'Cannot create backup while the server is restarting. Please wait for it to finish starting or stop it.',
+        409
+      )
+    }
     const wasRunning = runtime.status === 'running'
     let writesPaused = false
 
@@ -128,7 +134,7 @@ export default class ServerBackupService {
     const docker = await this.containers()
     try {
       const runtime = await docker.getContainerStatus(server)
-      if (runtime.status === 'running') {
+      if (runtime.status === 'running' || runtime.status === 'restarting') {
         throw new BackupOperationException(
           'Cannot restore while the server is running. Please stop the server first.',
           409

@@ -107,10 +107,10 @@ export default class McServersController {
       })
     }
 
-    // Check if server is running before modifying sensitive runtime properties (port)
+    // Check if server is running or restarting before modifying sensitive runtime properties (port)
     if (payload.serverPort !== undefined && payload.serverPort !== server.serverPort) {
       const runtime = await this.containerService.getContainerStatus(server)
-      if (runtime.status === 'running') {
+      if (runtime.status === 'running' || runtime.status === 'restarting') {
         return response.conflict({
           errors: [
             {
