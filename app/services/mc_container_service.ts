@@ -27,8 +27,17 @@ export interface ContainerStatsSnapshot {
   diskBytes: number
 }
 
+interface CpuSampleState {
+  containerUsage: number
+  systemUsage: number
+  timestamp: number
+  smoothedPercent: number
+}
+
 export default class McContainerService {
   protected docker: Docker
+  protected cpuStates = new Map<number, CpuSampleState>()
+  protected diskUsageCache = new Map<number, { bytes: number; timestamp: number }>()
 
   constructor() {
     this.docker = new Docker(
@@ -500,8 +509,6 @@ export default class McContainerService {
     }
   }
 
-  protected diskUsageCache = new Map<number, { bytes: number; timestamp: number }>()
-
   /**
    * Calculate recursive directory size on disk in bytes
    */
@@ -564,25 +571,66 @@ export default class McContainerService {
       const container = this.getContainer(server)
       const inspect = await container.inspect()
       if (!inspect.State.Running) {
+        this.cpuStates.delete(server.id)
         return defaultOfflineStats
       }
 
       const stats: any = await container.stats({ stream: false })
 
-      // Calculate CPU percent
+      // Calculate CPU percent with persistent client-side delta & EMA smoothing
       let cpuPercent = 0
-      const cpuStats = stats.cpu_stats
-      const preCpuStats = stats.precpu_stats
-      if (cpuStats && preCpuStats) {
+      const cpuStats = stats.cpu_stats || {}
+      const preCpuStats = stats.precpu_stats || {}
+      const currentContainerUsage = cpuStats.cpu_usage?.total_usage || 0
+      const currentSystemUsage = cpuStats.system_cpu_usage || 0
+      const onlineCpus = cpuStats.online_cpus || cpuStats.cpu_usage?.percpu_usage?.length || 1
+      const now = Date.now()
+
+      const prev = this.cpuStates.get(server.id)
+      let instantPercent = 0
+
+      if (prev && prev.containerUsage > 0 && currentContainerUsage >= prev.containerUsage) {
+        const cpuDelta = currentContainerUsage - prev.containerUsage
+        const systemDelta = currentSystemUsage - prev.systemUsage
+        const timeDeltaMs = Math.max(1, now - prev.timestamp)
+
+        if (systemDelta > 0 && cpuDelta > 0) {
+          instantPercent = (cpuDelta / systemDelta) * onlineCpus * 100.0
+        } else if (timeDeltaMs > 0 && cpuDelta > 0) {
+          // Wall-clock fallback (especially on Windows/WSL2 where system_cpu_usage can be erratic)
+          const timeDeltaNs = timeDeltaMs * 1_000_000
+          instantPercent = (cpuDelta / timeDeltaNs) * 100.0
+        } else if (cpuDelta === 0 && prev.smoothedPercent > 0 && timeDeltaMs < 4000) {
+          // Smooth decay instead of abruptly plunging to 0% when Docker counters haven't refreshed
+          instantPercent = prev.smoothedPercent * 0.8
+        }
+      } else if (cpuStats.cpu_usage && preCpuStats.cpu_usage) {
         const cpuDelta =
           (cpuStats.cpu_usage?.total_usage || 0) - (preCpuStats.cpu_usage?.total_usage || 0)
         const systemDelta = (cpuStats.system_cpu_usage || 0) - (preCpuStats.system_cpu_usage || 0)
-        const onlineCpus = cpuStats.online_cpus || cpuStats.cpu_usage?.percpu_usage?.length || 1
-
         if (systemDelta > 0 && cpuDelta > 0) {
-          const rawPercent = (cpuDelta / systemDelta) * onlineCpus * 100.0
-          cpuPercent = Math.round(rawPercent * 100) / 100
+          instantPercent = (cpuDelta / systemDelta) * onlineCpus * 100.0
         }
+      }
+
+      // Exponential moving average smoothing (EMA: 0.4 new reading, 0.6 historical trend)
+      if (prev && prev.smoothedPercent > 0 && instantPercent > 0) {
+        cpuPercent = prev.smoothedPercent * 0.6 + instantPercent * 0.4
+      } else {
+        cpuPercent = instantPercent
+      }
+
+      // Safety bounds check & round to 2 decimals
+      cpuPercent = Math.max(0, Math.min(onlineCpus * 100, cpuPercent))
+      cpuPercent = Math.round(cpuPercent * 100) / 100
+
+      if (currentContainerUsage > 0) {
+        this.cpuStates.set(server.id, {
+          containerUsage: currentContainerUsage,
+          systemUsage: currentSystemUsage,
+          timestamp: now,
+          smoothedPercent: cpuPercent,
+        })
       }
 
       // Calculate Memory stats (subtract cache/inactive_file)
