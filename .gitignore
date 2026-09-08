@@ -20,6 +20,7 @@ data/backups/*
 
 # Frontend assets compiled code
 public
+data
 
 # Build tools specific
 npm-debug.log

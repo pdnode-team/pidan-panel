@@ -52,6 +52,14 @@ export default class McServer extends McServerSchema {
   }
 
   /**
+   * Scratch space for file moves that must share a filesystem with the
+   * instance directories (rename cannot cross devices).
+   */
+  get tmpDirectory(): string {
+    return join(dataRoot(), 'tmp')
+  }
+
+  /**
    * Formatted JVM options array
    */
   get jvmOptions(): string[] {

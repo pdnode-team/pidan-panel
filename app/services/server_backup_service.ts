@@ -161,7 +161,14 @@ export default class ServerBackupService {
         throw new BackupOperationException('Backup is not ready to restore.', 409)
       }
 
-      const staging = app.makePath('tmp', 'restore-staging', `${server.identifier}-${backup.id}`)
+      // Staging must live on the SAME filesystem as the instance data:
+      // rename() cannot move across devices (EXDEV), which breaks when the
+      // panel runs inside a container with the data root on a bind mount.
+      const staging = join(
+        server.tmpDirectory,
+        'restore-staging',
+        `${server.identifier}-${backup.id}`
+      )
       await rm(staging, { recursive: true, force: true }).catch(() => {})
       await mkdir(staging, { recursive: true })
       await this.extractZipJailed(zipPath, staging)

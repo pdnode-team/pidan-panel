@@ -4,7 +4,7 @@ services:
       context: .
       secrets:
         - adonis_plus_token
-    image: pidan-panel:local
+    image: ghcr.io/pdnode-team/pidan-panel:latest
     ports:
       - "3333:3333"
     env_file:
@@ -13,17 +13,17 @@ services:
       HOST: 0.0.0.0
       PORT: "3333"
       NODE_ENV: production
-      # Both the panel and the docker daemon must see the SAME physical
-      # directory at the SAME absolute path, otherwise the MC containers
-      # created through docker.sock bind-mount an empty host directory
-      # ("Unable to access jarfile ...").
-      PIDAN_DATA_DIR: /srv/pidan-panel/data
-      DB_DATABASE: /srv/pidan-panel/data/db.sqlite
+      # The docker daemon must resolve MC bind-mount sources to REAL files.
+      # On a Linux host the default works: ./data is mounted at the identical
+      # absolute path. On Windows/Docker Desktop the daemon is a WSL2 VM that
+      # cannot see D:\... directly — override BOTH variables in the project
+      # .env file (compose reads it for interpolation):
+      #   PIDAN_DATA_DIR=/run/desktop/mnt/host/d/pidan-panel/data
+      #   PANEL_DATA_HOST_MOUNT=D:\pidan-panel\data
+      PIDAN_DATA_DIR: ${PIDAN_DATA_DIR:-/srv/pidan-panel/data}
+      DB_DATABASE: ${PIDAN_DATA_DIR:-/srv/pidan-panel/data}/db.sqlite
     volumes:
-      # Host path ./data is mounted at the identical path inside the panel,
-      # so MC container bind mounts (PIDAN_DATA_DIR/servers/<id>:/data)
-      # resolve to real files on the host.
-      - ./data:/srv/pidan-panel/data
+      - ${PANEL_DATA_HOST_MOUNT:-./data}:${PIDAN_DATA_DIR:-/srv/pidan-panel/data}
       - /var/run/docker.sock:/var/run/docker.sock
     restart: unless-stopped
 
