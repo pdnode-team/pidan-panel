@@ -48,7 +48,9 @@
             <option value="command">Command</option>
             <option value="power">Power</option>
             <option value="file">File</option>
-            <option value="config">Config</option>
+            <option value="auth">Auth</option>
+            <option value="user">User</option>
+            <option value="server">Server</option>
             <option value="backup">Backup</option>
             <option value="schedule">Schedule</option>
           </select>

@@ -612,8 +612,8 @@
                 </div>
               </div>
 
-              <!-- Java Runtime -->
-              <div class="pt-2 border-t border-zinc-800">
+              <!-- Java Runtime (admin only; the backend rejects dockerImage changes from regular users) -->
+              <div v-if="isAdmin" class="pt-2 border-t border-zinc-800">
                 <label class="font-medium text-zinc-300 block text-xs mb-1.5">Java Runtime (Docker Image)</label>
                 <div class="relative">
                   <select
@@ -1013,6 +1013,7 @@ import {
   ScrollText
 } from 'lucide-vue-next'
 import { detectServerCore, type ServerDetectionResult } from '@/utils/serverDetector'
+import { useAuthStore } from '@/stores/auth'
 
 // --- Props & Emits ---
 export interface ConsoleTerminalProps {
@@ -1043,6 +1044,11 @@ const emit = defineEmits<{
 }>()
 
 const router = useRouter()
+
+// Only administrators may change the container image; the backend rejects
+// dockerImage updates from regular users with 403.
+const authStore = useAuthStore()
+const isAdmin = computed(() => authStore.user.value?.role === 'admin')
 
 // --- Settings & Danger Zone State ---
 const isSettingsModalOpen = ref(false)
@@ -1338,13 +1344,18 @@ async function handleSaveSettings() {
   settingsSaveError.value = ''
   settingsSaveSuccess.value = false
   try {
-    const updated = await updateServer(props.instanceId, {
-      dockerImage: selectedDockerImage.value,
+    const payload: Record<string, unknown> = {
       serverJar: selectedServerJar.value.trim(),
       minMemoryMb: Number(selectedMinMemory.value),
       maxMemoryMb: Number(selectedMaxMemory.value),
       stopTimeoutSeconds: Number(selectedStopTimeout.value)
-    })
+    }
+    // Only admins may send dockerImage; including it for regular users would
+    // make the whole update fail with 403.
+    if (isAdmin.value) {
+      payload.dockerImage = selectedDockerImage.value
+    }
+    const updated = await updateServer(props.instanceId, payload)
     if (updated) {
       activeDockerImage.value = updated.dockerImage || selectedDockerImage.value
       currentServerJar.value = updated.serverJar || selectedServerJar.value.trim()

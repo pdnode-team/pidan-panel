@@ -8,6 +8,9 @@ export interface UserProfile {
   id: number
   fullName: string | null
   email: string
+  role: 'admin' | 'user'
+  serverIds: number[]
+  initials: string
   createdAt: string
   updatedAt: string
 }

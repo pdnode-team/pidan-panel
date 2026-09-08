@@ -70,11 +70,28 @@ export async function request<T = any>(
 
   if (!response.ok) {
     const errors: ApiErrorItem[] = body?.errors || [{ message: typeof body === 'string' ? body : response.statusText }]
+
+    // Session expired or revoked: drop the token and return to login.
+    // Auth endpoints themselves return 400/403 for bad credentials, so a 401
+    // here always means the bearer token is no longer valid.
+    if (response.status === 401 && !path.includes('/auth/')) {
+      setToken(null)
+      if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+        window.location.href = '/login'
+      }
+    }
+
     throw new ApiError(response.status, errors)
   }
 
-  if (body && typeof body === 'object' && body.data !== undefined && body.meta !== undefined) {
-    return body
+  // Paginated responses arrive as { data, metadata }; normalize the envelope
+  // key to `meta` so every view can keep reading res.meta regardless of which
+  // backend serializer produced the page.
+  if (body && typeof body === 'object' && body.data !== undefined) {
+    const paginationMeta = body.meta ?? body.metadata
+    if (paginationMeta !== undefined) {
+      return { ...body, meta: paginationMeta }
+    }
   }
   return body?.data !== undefined ? body.data : body
 }
