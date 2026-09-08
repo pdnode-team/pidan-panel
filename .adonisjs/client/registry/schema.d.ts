@@ -215,12 +215,12 @@ export interface Registry {
     methods: ["DELETE"]
     pattern: '/api/v1/servers/:id'
     types: {
-      body: {}
+      body: ExtractBody<InferInput<(typeof import('#validators/mc_server').deleteMcServerValidator)>>
       paramsTuple: [ParamValue]
       params: { id: ParamValue }
-      query: {}
+      query: ExtractQuery<InferInput<(typeof import('#validators/mc_server').deleteMcServerValidator)>>
       response: ExtractResponse<Awaited<ReturnType<import('#controllers/mc_servers_controller').default['destroy']>>>
-      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/mc_servers_controller').default['destroy']>>>
+      errorResponse: ExtractErrorResponse<Awaited<ReturnType<import('#controllers/mc_servers_controller').default['destroy']>>> | { status: 422; response: { errors: SimpleError[] } }
     }
   }
   'server_power_states.show': {

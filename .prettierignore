@@ -1,6 +1,7 @@
 .adonisjs
 node_modules
 build
+frontend
 .flow/docs/
 .claude/skills/flow-*
 .agents/skills/flow-*
