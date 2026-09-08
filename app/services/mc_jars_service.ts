@@ -1,6 +1,9 @@
 import type McServer from '#models/mc_server'
 import AdmZip from 'adm-zip'
-import { join, resolve, normalize, sep } from 'node:path'
+import app from '@adonisjs/core/services/app'
+import dns from 'node:dns/promises'
+import { isIP } from 'node:net'
+import { join, resolve, normalize, sep, basename } from 'node:path'
 import { createWriteStream } from 'node:fs'
 import { mkdir, rename, unlink } from 'node:fs/promises'
 import { Readable } from 'node:stream'
@@ -29,6 +32,89 @@ export interface McJarVersionInfo {
 
 export default class McJarsService {
   protected baseUrl = 'https://versions.mcjars.app/api/v1'
+
+  /**
+   * Reduce a requested jar file name to a bare file name so the download target
+   * can never escape the server's data directory.
+   */
+  static sanitizeJarFileName(raw: string): string {
+    const name = basename(String(raw).replace(/\\/g, '/'))
+    if (!name || name === '.' || name === '..') {
+      return 'server.jar'
+    }
+    return name
+  }
+
+  /**
+   * Classify an IP address as belonging to a private, loopback, link-local,
+   * or otherwise non-routable range. Used to reject SSRF-style download URLs.
+   */
+  static isPrivateAddress(address: string): boolean {
+    const family = isIP(address)
+    if (family === 4) {
+      const [a, b] = address.split('.').map(Number)
+      if (a === 0 || a === 10 || a === 127) return true
+      if (a === 100 && b >= 64 && b <= 127) return true
+      if (a === 169 && b === 254) return true
+      if (a === 172 && b >= 16 && b <= 31) return true
+      if (a === 192 && b === 168) return true
+      return false
+    }
+    if (family === 6) {
+      const lower = address.toLowerCase()
+      if (lower === '::' || lower === '::1') return true
+      if (lower.startsWith('fc') || lower.startsWith('fd')) return true
+      if (
+        lower.startsWith('fe8') ||
+        lower.startsWith('fe9') ||
+        lower.startsWith('fea') ||
+        lower.startsWith('feb')
+      ) {
+        return true
+      }
+      // IPv4-mapped IPv6 (::ffff:10.0.0.1)
+      const mapped = lower.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/)
+      if (mapped) {
+        return McJarsService.isPrivateAddress(mapped[1])
+      }
+      return false
+    }
+    return true
+  }
+
+  /**
+   * Validate a download URL in production: only http(s) is allowed and the
+   * resolved host must not point at private, loopback, or link-local networks
+   * (SSRF protection). In development/test environments the check is skipped
+   * so local mock servers keep working.
+   */
+  private async assertDownloadableUrl(rawUrl: string): Promise<URL> {
+    const url = new URL(rawUrl)
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+      throw new Error('Invalid download URL scheme: only HTTP and HTTPS are permitted.')
+    }
+
+    if (!app.inProduction) {
+      return url
+    }
+
+    const host = url.hostname
+    if (isIP(host.replace(/^\[|\]$/g, ''))) {
+      if (McJarsService.isPrivateAddress(host.replace(/^\[|\]$/g, ''))) {
+        throw new Error('Download URL points to a private network address and is not allowed.')
+      }
+      return url
+    }
+
+    const addresses = await dns.lookup(host, { all: true })
+    if (
+      addresses.length === 0 ||
+      addresses.some((a) => McJarsService.isPrivateAddress(a.address))
+    ) {
+      throw new Error('Download URL points to a private network address and is not allowed.')
+    }
+    return url
+  }
 
   /**
    * Fetch all supported server types/platforms (Paper, Vanilla, Purpur, Fabric, etc.)
@@ -142,18 +228,41 @@ export default class McJarsService {
     await mkdir(server.dataDirectory, { recursive: true })
 
     const isZip = downloadUrl.toLowerCase().split('?')[0].endsWith('.zip')
-    let fileName = options.targetFileName || server.serverJar || 'server.jar'
+    let fileName = McJarsService.sanitizeJarFileName(
+      options.targetFileName || server.serverJar || 'server.jar'
+    )
     if (isZip && fileName.toLowerCase().endsWith('.zip')) {
       fileName = 'server.jar'
     }
 
-    // Fetch the file stream
-    const res = await fetch(downloadUrl, {
-      headers: { 'User-Agent': 'Pidan-Panel/1.0' },
-    })
+    // Fetch the file stream, validating every hop so redirects cannot be used
+    // to bypass the private-address SSRF check.
+    let currentUrl = downloadUrl
+    let res!: Response
+    for (let hops = 0; hops <= 5; hops++) {
+      await this.assertDownloadableUrl(currentUrl)
+      const response = await fetch(currentUrl, {
+        headers: { 'User-Agent': 'Pidan-Panel/1.0' },
+        redirect: 'manual',
+      })
 
-    if (!res.ok || !res.body) {
-      throw new Error(`Failed to download from ${downloadUrl}: HTTP ${res.status}`)
+      if ([301, 302, 303, 307, 308].includes(response.status)) {
+        const location = response.headers.get('location')
+        if (!location) {
+          res = response
+          break
+        }
+        await response.body?.cancel()
+        currentUrl = new URL(location, currentUrl).toString()
+        continue
+      }
+
+      res = response
+      break
+    }
+
+    if (!res || !res.ok || !res.body) {
+      throw new Error(`Failed to download from ${downloadUrl}: HTTP ${res?.status ?? 'unknown'}`)
     }
 
     const totalSize = Number(res.headers.get('content-length') || 0)
