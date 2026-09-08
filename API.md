@@ -99,10 +99,11 @@
 
 用于反向代理（Nginx/Caddy）、容器编排探针（Kubernetes liveness/readiness probe、Docker healthcheck）或全局监控中心（Uptime Kuma、Prometheus）。基于 AdonisJS 官方 `@adonisjs/core/health` 体系构建。
 
-- **URL**: `GET /health` 或 `GET /health` (Base URL 下 `GET /api/v1/health`)
+- **`GET /health`（liveness 存活探针）**：仅检查进程自身与数据库（磁盘、内存、数据库）。Docker 引擎异常**不会**导致失败，适用于 K8s liveness / Docker healthcheck，避免 Docker 抖动时面板被误重启。
+- **`GET /api/v1/health`（readiness 完整就绪检查）**：在存活检查基础上额外包含 Docker 引擎检查，Docker 不可达时返回 `HTTP 503`。
 - **鉴权**: 无需 Token
 - **响应码**: 系统健康时返回 `HTTP 200 OK`，若核心组件严重异常则返回 `HTTP 503 Service Unavailable`。
-- **响应示例 (HTTP 200)**:
+- **响应示例 (HTTP 200，完整就绪检查)**:
   ```json
   {
     "isHealthy": true,
@@ -176,6 +177,9 @@
         "id": 1,
         "fullName": "Administrator",
         "email": "admin@example.com",
+        "role": "admin",
+        "serverIds": [],
+        "initials": "AD",
         "createdAt": "2026-09-06T00:00:00.000Z",
         "updatedAt": "2026-09-06T00:00:00.000Z"
       },
@@ -185,11 +189,14 @@
   ```
 - **特殊错误**:
   - `HTTP 403`: `{"errors": [{"message": "Registration is closed. Administrator already exists."}]}`
+  - `HTTP 429`: 触发注册限流（每 IP 每 10 分钟最多 5 次）。并发注册有保护：两个并发首次注册只会产生一个管理员。
 
 ### 2.2 用户登录 (Login)
 
 - **URL**: `POST /auth/login`
 - **鉴权**: 无需 Token
+- **限流**: 同一 IP 每分钟最多 10 次登录尝试；同一 IP + 邮箱组合每分钟最多 5 次失败尝试，超限后封禁 20 分钟（成功登录会清除计数）。
+- **Token 有效期**: 登录签发的 Access Token 有效期为 **7 天**，过期后需重新登录。
 - **请求体 (JSON)**:
 
   | 字段       | 类型   | 必填 | 说明     |
@@ -212,6 +219,9 @@
         "id": 1,
         "fullName": "Administrator",
         "email": "admin@example.com",
+        "role": "admin",
+        "serverIds": [],
+        "initials": "AD",
         "createdAt": "2026-09-06T00:00:00.000Z",
         "updatedAt": "2026-09-06T00:00:00.000Z"
       },
@@ -219,6 +229,9 @@
     }
   }
   ```
+- **特殊错误**:
+  - `HTTP 400`: 邮箱或密码错误
+  - `HTTP 429`: 触发登录限流
 
 ### 2.3 退出登录 (Logout)
 
@@ -226,7 +239,14 @@
 
 - **URL**: `POST /logout`
 - **鉴权**: `Bearer <token>`
-- **响应**: `HTTP 204 No Content`
+- **响应**: `HTTP 200 OK`
+  ```json
+  {
+    "data": {
+      "message": "Logged out successfully"
+    }
+  }
+  ```
 
 ---
 
@@ -243,6 +263,9 @@
       "id": 1,
       "fullName": "Administrator",
       "email": "admin@example.com",
+      "role": "admin",
+      "serverIds": [],
+      "initials": "AD",
       "createdAt": "2026-09-06T00:00:00.000Z",
       "updatedAt": "2026-09-06T00:00:00.000Z"
     }
@@ -259,29 +282,27 @@
 
 - **URL**: `GET /mcjars/types`
 - **鉴权**: `Bearer <token>`
-- **响应示例 (HTTP 200)**:
+- **响应示例 (HTTP 200)**（以类型英文标识为 key 的对象）:
   ```json
   {
-    "data": [
-      {
-        "type": "paper",
-        "category": "server",
+    "data": {
+      "paper": {
         "name": "Paper",
-        "compatibility": ["plugins"]
+        "icon": "https://...",
+        "description": "High performance Minecraft server",
+        "builds": 42,
+        "deprecated": false,
+        "experimental": false
       },
-      {
-        "type": "vanilla",
-        "category": "server",
-        "name": "Vanilla",
-        "compatibility": []
-      },
-      {
-        "type": "purpur",
-        "category": "server",
+      "purpur": {
         "name": "Purpur",
-        "compatibility": ["plugins"]
+        "icon": "https://...",
+        "description": "Purpur server software",
+        "builds": 31,
+        "deprecated": false,
+        "experimental": false
       }
-    ]
+    }
   }
   ```
 
@@ -289,23 +310,33 @@
 
 - **URL**: `GET /mcjars/types/:type` (例如 `/mcjars/types/paper`)
 - **鉴权**: `Bearer <token>`
-- **响应示例 (HTTP 200)**:
+- **响应示例 (HTTP 200)**（以版本号为 key 的对象）:
   ```json
   {
-    "data": [
-      {
+    "data": {
+      "1.21.4": {
         "version": "1.21.4",
-        "build": 123,
-        "experimental": false,
-        "releaseDate": "2025-01-10T12:00:00.000Z"
+        "type": "paper",
+        "java": 21,
+        "supported": true,
+        "jarUrl": "https://...",
+        "jarSize": 51234000,
+        "buildNumber": 123,
+        "zipUrl": null,
+        "isZip": false
       },
-      {
+      "1.20.4": {
         "version": "1.20.4",
-        "build": 498,
-        "experimental": false,
-        "releaseDate": "2024-04-01T10:00:00.000Z"
+        "type": "paper",
+        "java": 17,
+        "supported": true,
+        "jarUrl": "https://...",
+        "jarSize": 48210000,
+        "buildNumber": 498,
+        "zipUrl": null,
+        "isZip": false
       }
-    ]
+    }
   }
   ```
 
@@ -313,13 +344,11 @@
 
 ## 5. 服务器实例管理
 
-### 5.1 获取服务器列表 (分页)
+### 5.1 获取服务器列表
 
 - **URL**: `GET /servers`
-- **查询参数**:
-  - `page`: 页码，默认 `1`
-  - `limit`: 每页条数，默认 `20`
 - **鉴权**: `Bearer <token>`
+- **行为**: 非分页列表，按 `id` 升序。管理员返回全部实例，普通用户仅返回被授权的实例。
 - **响应示例 (HTTP 200)**:
   ```json
   {
@@ -334,29 +363,16 @@
         "maxMemoryMb": 4096,
         "serverPort": 25565,
         "javaArgs": "-XX:+UseG1GC",
-        "containerName": "pidan_mc_survival-1",
-        "dataDirectory": "D:\\pidan-panel\\data\\servers\\survival-1",
-        "runtime": {
-          "status": "running", // 'running' | 'stopped' | 'restarting' | 'error'
-          "containerId": "a1b2c3d4e5f6...",
-          "memoryLimitMb": 4096,
-          "serverPort": 25565
-        },
+        "stopTimeoutSeconds": 60,
+        "autoStartOnBoot": false,
+        "autoRestartOnCrash": false,
+        "crashBackoffInitialSeconds": 5,
+        "crashBackoffMaxSeconds": 300,
+        "crashMaxRetries": 5,
         "createdAt": "2026-09-06T00:00:00.000Z",
         "updatedAt": "2026-09-06T00:00:00.000Z"
       }
-    ],
-    "meta": {
-      "total": 1,
-      "perPage": 20,
-      "currentPage": 1,
-      "lastPage": 1,
-      "firstPage": 1,
-      "firstPageUrl": "/?page=1",
-      "lastPageUrl": "/?page=1",
-      "nextPageUrl": null,
-      "previousPageUrl": null
-    }
+    ]
   }
   ```
 
@@ -370,12 +386,18 @@
   | ------------- | ------ | ---- | --------------------------------- | ---------------------------------- |
   | `name`        | string | 是   | 1-100字符                         | 显示名称，如 "我的MC服务器"        |
   | `identifier`  | string | 是   | 2-50字符，正则 `^[a-z0-9-]+$`     | 唯一英文标识，决定容器名和存放目录 |
-  | `serverJar`   | string | 否   | `"server.jar"`                    | 运行的核心文件名                   |
-  | `dockerImage` | string | 否   | `"eclipse-temurin:21-jre-alpine"` | Java 运行环境镜像                  |
+  | `serverJar`   | string | 否   | `"server.jar"`                    | 运行的核心文件名，不含路径分隔符   |
+  | `dockerImage` | string | 否   | `"eclipse-temurin:21-jre-alpine"` | Java 运行环境镜像（仅管理员）      |
   | `minMemoryMb` | number | 否   | `1024` (256~65536)                | 最小内存 (-Xms)                    |
   | `maxMemoryMb` | number | 否   | `2048` (256~65536)                | 最大内存 (-Xmx)                    |
   | `serverPort`  | number | 是   | 1024~65535，全局唯一              | 游戏对外端口，映射容器 25565       |
   | `javaArgs`    | string | 否   | 空                                | 附加 JVM 启动参数                  |
+  | `stopTimeoutSeconds` | number | 否 | `60` (5~300)               | 优雅停机等待秒数                   |
+  | `autoStartOnBoot`    | boolean | 否 | `false`                    | 面板启动时自动开机                 |
+  | `autoRestartOnCrash` | boolean | 否 | `false`                    | 崩溃后自动重启                     |
+  | `crashBackoffInitialSeconds` | number | 否 | `5` (1~60)          | 崩溃重启初始退避秒数               |
+  | `crashBackoffMaxSeconds` | number | 否 | `300` (5~3600)              | 崩溃重启最大退避秒数               |
+  | `crashMaxRetries` | number | 否 | `5` (0~50)                      | 崩溃连续重启最大次数               |
 
 - **请求示例**:
   ```json
@@ -390,31 +412,37 @@
     "javaArgs": "-XX:+UseG1GC"
   }
   ```
-- **响应**: `HTTP 201 Created`，返回包含 `data` 的服务器完整详情及初始状态 `runtime.status: "stopped"`。
+- **响应**: `HTTP 201 Created`，返回包含 `data` 的服务器完整详情（字段同 5.1）。
 
 ### 5.3 获取单个服务器详情
 
 - **URL**: `GET /servers/:id`
 - **鉴权**: `Bearer <token>`
-- **响应**: `HTTP 200 OK`，包含该实例完整字段和 `runtime` 实时运行状态。
+- **响应**: `HTTP 200 OK`，字段同 5.1（实时运行状态请使用 `GET /servers/:id/power`）。
 
 ### 5.4 更新服务器配置
 
 - **URL**: `PUT /servers/:id` 或 `PATCH /servers/:id`
 - **鉴权**: `Bearer <token>`
-- **请求体**: 所有字段均为可选，仅传递要修改的字段（`name`, `serverJar`, `dockerImage`, `minMemoryMb`, `maxMemoryMb`, `serverPort`, `javaArgs`）。
+- **权限**: 管理员或被授权用户。其中 `dockerImage` **仅管理员可修改**（普通用户修改会返回 `403 Forbidden`）。
+- **请求体**: 所有字段均为可选，仅传递要修改的字段（`name`, `serverJar`, `dockerImage`, `minMemoryMb`, `maxMemoryMb`, `serverPort`, `javaArgs`, `stopTimeoutSeconds`, `autoStartOnBoot`, `autoRestartOnCrash`, `crashBackoffInitialSeconds`, `crashBackoffMaxSeconds`, `crashMaxRetries`）。
+  - `serverJar` 不允许包含路径分隔符（`/` 或 `\`）。
 - **响应**: `HTTP 200 OK`，返回修改后的实例。
 
 ### 5.5 删除服务器
 
 - **URL**: `DELETE /servers/:id`
+- **鉴权**: 仅 `admin` 角色
 - **查询参数 / 请求体 (可选)**:
   - `deleteFiles`: `boolean`，默认 `false`。
     - `false` (默认)：仅销毁 Docker 容器并删除数据库记录，**保留服务器数据目录（地图、存档、配置等）**。
     - `true`（如 `?deleteFiles=true` 或 `{ "deleteFiles": true }`）：在销毁容器和记录的同时，**彻底从磁盘抹除该实例的数据目录**。
   - 无论 `deleteFiles` 取值如何，该实例的**快照备份都会被丢弃**。若删除后仍需保留备份，请先下载。
-- **鉴权**: `Bearer <token>`
 - **前置条件**: 服务器必须处于停止状态。如果正在运行，将返回 `409 Conflict`。
+- **特殊错误**:
+  - `HTTP 503`: Docker 引擎不可达时拒绝删除（无法安全确认容器已被移除）。
+  - `HTTP 500`: 容器移除失败或数据目录抹除失败时中止删除，实例保留以便重试；失败会记入审计日志。
+- **审计**: 删除成功与失败均会写入审计日志（`server.delete`），实例删除后日志通过 `serverName`/`serverIdentifier` 保留归属信息。
 - **响应**: `HTTP 204 No Content`
 
 ---
@@ -793,6 +821,8 @@
   }
   ```
 
+  > **注意**: 响应分页信封为 `{ data, metadata }`（`metadata` 而非 `meta`）。
+
 ### 12.2 创建新用户
 
 - **URL**: `POST /users`
@@ -1032,7 +1062,18 @@
 
 ## 15. 系统操作审计日志 (Audit Logs)
 
-记录系统中所有关键操作（命令派发、电源控制、文件变更、备份还原、调度任务、用户管理等），仅追加不可删改。
+记录系统中所有关键操作，仅追加不可删改：
+
+- **命令派发**（`command.dispatch`）
+- **电源控制**（`power.start` / `power.stop` / `power.restart` / `power.kill`）
+- **文件变更**（`file.upload` / `file.save` / `file.rename` / `file.delete`）
+- **备份还原**（`backup.create` / `backup.delete` / `backup.restore`）
+- **实例管理**（`server.create` / `server.update` / `server.delete`）
+- **认证事件**（`auth.signup` / `auth.login` / `auth.logout`，含失败登录）
+- **用户管理**（`user.create` / `user.update` / `user.delete`）
+- **计划任务**（`schedule.create` / `schedule.update` / `schedule.delete` / `schedule.run` / `schedule.execute`）
+
+**保留期**: 普通类别 30 天；安全敏感类别（`auth` / `user`）90 天。实例删除后相关日志保留，通过 `serverName` / `serverIdentifier` 快照字段保留归属。
 
 ### 15.1 查询全局审计日志（仅管理员）
 
@@ -1047,7 +1088,7 @@
   | `status` | string | `success` / `failed` |
   | `userId` | number | 按操作用户筛选 |
   | `serverId` | number | 按实例筛选 |
-  | `search` | string | 全文关键词搜索（动作、详情、用户邮箱、错误信息） |
+  | `search` | string | 全文关键词搜索（动作、详情、用户邮箱、用户姓名、实例名称/标识、错误信息） |
   | `dateFrom` | string | ISO 日期，如 `2026-09-01` |
   | `dateTo` | string | ISO 日期 |
 - **响应示例 (HTTP 200)**:
@@ -1060,6 +1101,8 @@
         "userEmail": "admin@pidan.local",
         "userFullName": "Admin",
         "mcServerId": 3,
+        "serverName": "生存一服",
+        "serverIdentifier": "survival-1",
         "category": "command",
         "action": "command.dispatch",
         "details": { "command": "say Hello World" },
