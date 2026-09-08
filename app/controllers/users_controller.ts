@@ -1,9 +1,14 @@
 import User from '#models/user'
 import UserTransformer from '#transformers/user_transformer'
+import AuditLogService from '#services/audit_log_service'
 import { createUserValidator, updateUserValidator } from '#validators/user'
+import { inject } from '@adonisjs/core'
 import type { HttpContext } from '@adonisjs/core/http'
 
+@inject()
 export default class UsersController {
+  constructor(protected auditLogService: AuditLogService) {}
+
   /**
    * List users with pagination and optional search
    */
@@ -20,13 +25,13 @@ export default class UsersController {
     }
 
     const users = await query.paginate(page, perPage)
-    return serialize(users)
+    return serialize(UserTransformer.paginate(users.all(), users.getMeta()))
   }
 
   /**
    * Create a new user (Admin only)
    */
-  async store({ request, response, serialize }: HttpContext) {
+  async store({ request, response, serialize, auth }: HttpContext) {
     const payload = await request.validateUsing(createUserValidator)
     const user = await User.create({
       fullName: payload.fullName || null,
@@ -34,6 +39,15 @@ export default class UsersController {
       password: payload.password,
       role: payload.role || 'user',
       serverIds: payload.serverIds || [],
+    })
+
+    await this.auditLogService.record({
+      user: auth.user!,
+      category: 'user',
+      action: 'user.create',
+      details: { email: user.email, role: user.role, targetUserId: user.id },
+      status: 'success',
+      ipAddress: request.ip(),
     })
 
     return response.created(await serialize(UserTransformer.transform(user)))
@@ -50,9 +64,11 @@ export default class UsersController {
   /**
    * Update a user (Admin only)
    */
-  async update({ params, request, response, serialize }: HttpContext) {
+  async update({ params, request, response, serialize, auth }: HttpContext) {
     const user = await User.findOrFail(params.id)
     const payload = await request.validateUsing(updateUserValidator)
+
+    const changes: Record<string, unknown> = {}
 
     if (payload.email && payload.email !== user.email) {
       const existing = await User.query()
@@ -65,18 +81,22 @@ export default class UsersController {
         })
       }
       user.email = payload.email
+      changes.email = payload.email
     }
 
     if (payload.fullName !== undefined) {
       user.fullName = payload.fullName || null
+      changes.fullName = payload.fullName || null
     }
 
     if (payload.password) {
       user.password = payload.password
+      changes.passwordChanged = true
     }
 
     if (payload.serverIds !== undefined) {
       user.serverIds = payload.serverIds
+      changes.serverIds = payload.serverIds
     }
 
     if (payload.role && payload.role !== user.role) {
@@ -89,17 +109,35 @@ export default class UsersController {
           })
         }
       }
+      changes.previousRole = user.role
+      changes.role = payload.role
       user.role = payload.role
     }
 
     await user.save()
+
+    // Revoke all access tokens when the password changed so stolen
+    // credentials/tokens cannot keep working after a reset.
+    if (changes.passwordChanged) {
+      await User.accessTokens.deleteAll(user)
+    }
+
+    await this.auditLogService.record({
+      user: auth.user!,
+      category: 'user',
+      action: 'user.update',
+      details: { targetUserId: user.id, email: user.email, changes },
+      status: 'success',
+      ipAddress: request.ip(),
+    })
+
     return serialize(UserTransformer.transform(user))
   }
 
   /**
    * Delete a user (Admin only, with self-deletion and last-admin protections)
    */
-  async destroy({ params, response, auth }: HttpContext) {
+  async destroy({ params, response, auth, request }: HttpContext) {
     const currentUser = auth.user!
     const targetUser = await User.findOrFail(params.id)
 
@@ -121,7 +159,20 @@ export default class UsersController {
       }
     }
 
+    const targetEmail = targetUser.email
+    const targetRole = targetUser.role
     await targetUser.delete()
+    await User.accessTokens.deleteAll(targetUser)
+
+    await this.auditLogService.record({
+      user: currentUser,
+      category: 'user',
+      action: 'user.delete',
+      details: { targetUserId: targetUser.id, email: targetEmail, role: targetRole },
+      status: 'success',
+      ipAddress: request.ip(),
+    })
+
     return response.noContent()
   }
 }

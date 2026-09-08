@@ -21,10 +21,21 @@ export default await Env.create(new URL('../', import.meta.url), {
   // App
   APP_KEY: Env.schema.secret(),
   APP_URL: Env.schema.string({ format: 'url', tld: false }),
+  APP_NAME: Env.schema.string.optional(),
 
   // Database
   DB_DATABASE: Env.schema.string.optional(),
 
   // Session
   SESSION_DRIVER: Env.schema.enum(['cookie', 'memory', 'database'] as const),
+
+  // CORS (comma-separated allowlist used in production)
+  CORS_ORIGIN: Env.schema.string.optional(),
+
+  /*
+  |----------------------------------------------------------
+  | Variables for configuring the limiter package
+  |----------------------------------------------------------
+  */
+  LIMITER_STORE: Env.schema.enum(['database', 'memory'] as const),
 })

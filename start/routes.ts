@@ -10,14 +10,17 @@
 import { middleware } from '#start/kernel'
 import router from '@adonisjs/core/services/router'
 import { controllers } from '#generated/controllers'
-import { healthChecks } from '#start/health'
+import { healthChecks, livenessChecks } from '#start/health'
+import { signupThrottle } from '#start/limiter'
 
 router.get('/', () => {
   return { name: 'pidan-panel', status: 'operational' }
 })
 
+// Top-level liveness probe: process and database only. Docker problems must
+// not make orchestrators restart the panel.
 router.get('/health', async ({ response }) => {
-  const report = await healthChecks.run()
+  const report = await livenessChecks.run()
   if (report.isHealthy) {
     return response.ok(report)
   }
@@ -37,7 +40,7 @@ router
 
     router
       .group(() => {
-        router.post('signup', [controllers.NewAccount, 'store'])
+        router.post('signup', [controllers.NewAccount, 'store']).use(signupThrottle)
         router.post('login', [controllers.AccessTokens, 'store'])
       })
       .prefix('auth')

@@ -61,8 +61,9 @@ export default defineConfig({
     },
     {
       file: () => import('adonisjs-scheduler/scheduler_provider'),
-      environment: ['console'],
+      environment: ['console', 'web'],
     },
+    () => import('@adonisjs/limiter/limiter_provider'),
   ],
 
   /*
@@ -79,7 +80,7 @@ export default defineConfig({
     () => import('#start/validator'),
     {
       file: () => import('#start/scheduler'),
-      environment: ['console'],
+      environment: ['console', 'web'],
     },
   ],
 
