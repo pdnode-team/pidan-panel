@@ -1,9 +1,21 @@
 import app from '@adonisjs/core/services/app'
+import env from '#start/env'
+import { join } from 'node:path'
 import { McServerSchema } from '#database/schema'
 import { column, hasMany } from '@adonisjs/lucid/orm'
 import type { HasMany } from '@adonisjs/lucid/types/relations'
 import ServerBackup from '#models/server_backup'
 import ServerSchedule from '#models/server_schedule'
+
+/**
+ * Root directory holding servers/ and backups/. Overridable so the panel can
+ * run inside a container while MC containers bind-mount host paths that are
+ * physically identical (PIDAN_DATA_DIR must exist on the docker host).
+ */
+function dataRoot(): string {
+  const configured = env.get('PIDAN_DATA_DIR')
+  return configured ? String(configured) : app.makePath('data')
+}
 
 export default class McServer extends McServerSchema {
   @column({ consume: (v) => Boolean(v) })
@@ -29,14 +41,14 @@ export default class McServer extends McServerSchema {
    * Absolute path to the host data directory for this instance
    */
   get dataDirectory(): string {
-    return app.makePath('data/servers', this.identifier)
+    return join(dataRoot(), 'servers', this.identifier)
   }
 
   /**
    * Absolute path to the snapshot directory for this instance (outside the data jail)
    */
   get backupDirectory(): string {
-    return app.makePath('data/backups', this.identifier)
+    return join(dataRoot(), 'backups', this.identifier)
   }
 
   /**
