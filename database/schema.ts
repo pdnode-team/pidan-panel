@@ -17,6 +17,8 @@ export class AuditLogSchema extends BaseModel {
     'id',
     'ipAddress',
     'mcServerId',
+    'serverIdentifier',
+    'serverName',
     'status',
     'userEmail',
     'userFullName',
@@ -39,6 +41,10 @@ export class AuditLogSchema extends BaseModel {
   declare ipAddress: string | null
   @column()
   declare mcServerId: number | null
+  @column()
+  declare serverIdentifier: string | null
+  @column()
+  declare serverName: string | null
   @column()
   declare status: string
   @column()
@@ -140,6 +146,17 @@ export class McServerSchema extends BaseModel {
   declare stopTimeoutSeconds: number
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: DateTime
+}
+
+export class RateLimitSchema extends BaseModel {
+  static $columns = ['expire', 'key', 'points'] as const
+  $columns = RateLimitSchema.$columns
+  @column()
+  declare expire: bigint | number | null
+  @column()
+  declare key: string
+  @column()
+  declare points: number
 }
 
 export class ServerBackupSchema extends BaseModel {

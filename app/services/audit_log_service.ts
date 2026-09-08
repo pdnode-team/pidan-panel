@@ -1,10 +1,12 @@
 import AuditLog, { type AuditCategory } from '#models/audit_log'
+import McServer from '#models/mc_server'
 import type User from '#models/user'
 import logger from '@adonisjs/core/services/logger'
 import { DateTime } from 'luxon'
 
 export interface RecordAuditParams {
   user?: User | null
+  mcServer?: McServer | null
   mcServerId?: number | null
   category: AuditCategory
   action: string
@@ -38,11 +40,24 @@ export default class AuditLogService {
       const userFullName = user?.fullName || 'System'
       const userId = user?.id ?? null
 
+      const server = params.mcServer ?? null
+      let mcServerId = server?.id ?? params.mcServerId ?? null
+      let serverName = server?.name ?? null
+      let serverIdentifier = server?.identifier ?? null
+
+      if (mcServerId !== null && server === null) {
+        const found = await McServer.find(mcServerId)
+        serverName = found?.name ?? null
+        serverIdentifier = found?.identifier ?? null
+      }
+
       const log = await AuditLog.create({
         userId,
         userEmail,
         userFullName,
-        mcServerId: params.mcServerId ?? null,
+        mcServerId,
+        serverName,
+        serverIdentifier,
         category: params.category,
         action: params.action,
         details: params.details ? JSON.stringify(params.details) : null,
@@ -97,6 +112,8 @@ export default class AuditLogService {
           .orWhereILike('details', term)
           .orWhereILike('user_email', term)
           .orWhereILike('user_full_name', term)
+          .orWhereILike('server_name', term)
+          .orWhereILike('server_identifier', term)
           .orWhereILike('error_message', term)
       })
     }
@@ -119,16 +136,32 @@ export default class AuditLogService {
   }
 
   /**
-   * Prune audit logs older than retentionDays (default: 30 days)
-   * Returns count of pruned records
+   * Prune audit logs older than retentionDays (default: 30 days).
+   * Security-sensitive categories (auth, user) are retained for 90 days.
+   * Returns count of pruned records.
    */
   async pruneOldLogs(retentionDays = 30): Promise<number> {
     try {
-      const cutoff = DateTime.now().minus({ days: retentionDays }).toSQL()!
-      const deletedCount = await AuditLog.query().where('created_at', '<', cutoff).delete()
-      const total = Array.isArray(deletedCount) ? deletedCount.length : Number(deletedCount)
+      const generalCutoff = DateTime.now().minus({ days: retentionDays }).toSQL()!
+      const securityCutoff = DateTime.now()
+        .minus({ days: retentionDays + 60 })
+        .toSQL()!
+
+      const generalDeleted = await AuditLog.query()
+        .where('created_at', '<', generalCutoff)
+        .whereNotIn('category', ['auth', 'user'])
+        .delete()
+
+      const securityDeleted = await AuditLog.query()
+        .where('created_at', '<', securityCutoff)
+        .whereIn('category', ['auth', 'user'])
+        .delete()
+
+      const toCount = (deleted: unknown) =>
+        Array.isArray(deleted) ? deleted.length : Number(deleted)
+      const total = toCount(generalDeleted) + toCount(securityDeleted)
       logger.info(
-        `[AuditLogService] Pruned ${total} expired audit logs older than ${retentionDays} days.`
+        `[AuditLogService] Pruned ${total} expired audit logs (general < ${retentionDays}d, security < ${retentionDays + 60}d).`
       )
       return total
     } catch (err: any) {

@@ -5,6 +5,7 @@ import McServer from '#models/mc_server'
 import ServerSchedule from '#models/server_schedule'
 import ServerScheduleService from '#services/server_schedule_service'
 import ServerScheduleTransformer from '#transformers/server_schedule_transformer'
+import AuditLogService from '#services/audit_log_service'
 import {
   createServerScheduleValidator,
   updateServerScheduleValidator,
@@ -12,7 +13,10 @@ import {
 
 @inject()
 export default class ServerSchedulesController {
-  constructor(protected scheduleService: ServerScheduleService) {}
+  constructor(
+    protected scheduleService: ServerScheduleService,
+    protected auditLogService: AuditLogService
+  ) {}
 
   async index({ params, request, serialize }: HttpContext) {
     const server = await McServer.findOrFail(params.id)
@@ -48,6 +52,20 @@ export default class ServerSchedulesController {
       lastRunMessage: null,
     })
 
+    await this.auditLogService.record({
+      mcServer: server,
+      category: 'schedule',
+      action: 'schedule.create',
+      details: {
+        scheduleId: schedule.id,
+        name: schedule.name,
+        cron: schedule.cron,
+        action: schedule.action,
+      },
+      status: 'success',
+      ipAddress: request.ip(),
+    })
+
     return response.created(await serialize(ServerScheduleTransformer.transform(schedule)))
   }
 
@@ -62,19 +80,69 @@ export default class ServerSchedulesController {
     if (data.isActive !== undefined) schedule.isActive = data.isActive
 
     await schedule.save()
+
+    await this.auditLogService.record({
+      mcServerId: schedule.mcServerId,
+      category: 'schedule',
+      action: 'schedule.update',
+      details: {
+        scheduleId: schedule.id,
+        name: schedule.name,
+        cron: schedule.cron,
+        action: schedule.action,
+        isActive: schedule.isActive,
+      },
+      status: 'success',
+      ipAddress: request.ip(),
+    })
+
     return serialize(ServerScheduleTransformer.transform(schedule))
   }
 
-  async destroy({ params, response }: HttpContext) {
+  async destroy({ params, response, request }: HttpContext) {
     const schedule = await this.findOwnedSchedule(params.id, params.scheduleId)
+    const scheduleInfo = {
+      scheduleId: schedule.id,
+      name: schedule.name,
+      cron: schedule.cron,
+      action: schedule.action,
+    }
+    const mcServerId = schedule.mcServerId
     await schedule.delete()
+
+    await this.auditLogService.record({
+      mcServerId,
+      category: 'schedule',
+      action: 'schedule.delete',
+      details: scheduleInfo,
+      status: 'success',
+      ipAddress: request.ip(),
+    })
+
     return response.noContent()
   }
 
-  async run({ params, response, serialize }: HttpContext) {
+  async run({ params, response, serialize, request }: HttpContext) {
     const schedule = await this.findOwnedSchedule(params.id, params.scheduleId)
     await this.scheduleService.executeSchedule(schedule)
     await schedule.refresh()
+
+    await this.auditLogService.record({
+      mcServerId: schedule.mcServerId,
+      category: 'schedule',
+      action: 'schedule.run',
+      details: {
+        scheduleId: schedule.id,
+        name: schedule.name,
+        cron: schedule.cron,
+        action: schedule.action,
+        message: schedule.lastRunMessage,
+      },
+      status: schedule.lastRunStatus === 'success' ? 'success' : 'failed',
+      errorMessage: schedule.lastRunStatus === 'success' ? null : schedule.lastRunMessage,
+      ipAddress: request.ip(),
+    })
+
     return response.ok(await serialize(ServerScheduleTransformer.transform(schedule)))
   }
 

@@ -5,6 +5,7 @@ import { createRequire } from 'node:module'
 import McContainerService from '#services/mc_container_service'
 import ServerBackupService from '#services/server_backup_service'
 import ServerWatchdogService from '#services/server_watchdog_service'
+import AuditLogService from '#services/audit_log_service'
 import ServerSchedule from '#models/server_schedule'
 
 const req = createRequire(import.meta.resolve('adonisjs-scheduler'))
@@ -15,7 +16,8 @@ export default class ServerScheduleService {
   constructor(
     protected containerService: McContainerService,
     protected backupService: ServerBackupService,
-    protected watchdogService: ServerWatchdogService
+    protected watchdogService: ServerWatchdogService,
+    protected auditLogService: AuditLogService
   ) {}
 
   /**
@@ -127,6 +129,21 @@ export default class ServerScheduleService {
     schedule.lastRunStatus = success ? 'success' : 'failed'
     schedule.lastRunMessage = message
     await schedule.save()
+
+    await this.auditLogService.record({
+      mcServer: server,
+      category: 'schedule',
+      action: 'schedule.execute',
+      details: {
+        scheduleId: schedule.id,
+        name: schedule.name,
+        cron: schedule.cron,
+        action: schedule.action,
+        message,
+      },
+      status: success ? 'success' : 'failed',
+      errorMessage: success ? null : message,
+    })
 
     return { success, message }
   }

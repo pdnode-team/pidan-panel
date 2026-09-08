@@ -10,6 +10,8 @@ export default class AuditLogTransformer extends BaseTransformer<AuditLog> {
       userEmail: data.userEmail,
       userFullName: data.userFullName,
       mcServerId: data.mcServerId,
+      serverName: data.serverName,
+      serverIdentifier: data.serverIdentifier,
       category: data.category,
       action: data.action,
       details: data.parsedDetails,
