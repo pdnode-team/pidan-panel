@@ -64,7 +64,7 @@ export default defineConfig({
       environment: ['console', 'web'],
     },
     () => import('@adonisjs/limiter/limiter_provider'),
-    () => import('@adonisjs/static/static_provider')
+    () => import('@adonisjs/static/static_provider'),
   ],
 
   /*
@@ -119,10 +119,12 @@ export default defineConfig({
   | the production build.
   |
   */
-  metaFiles: [{
-    pattern: 'public/**',
-    reloadServer: false,
-  }],
+  metaFiles: [
+    {
+      pattern: 'public/**',
+      reloadServer: false,
+    },
+  ],
 
   hooks: {
     init: [
