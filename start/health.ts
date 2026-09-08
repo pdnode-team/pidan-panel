@@ -7,8 +7,19 @@ import {
 } from '@adonisjs/core/health'
 import { DbCheck } from '@adonisjs/lucid/database'
 import db from '@adonisjs/lucid/services/db'
+import env from '#start/env'
 import McContainerService from '#services/mc_container_service'
 import app from '@adonisjs/core/services/app'
+
+/**
+ * Disk usage percentage after which the health check warns (default 75).
+ * Configure with DISK_WARN_PERCENT in the environment.
+ */
+const diskWarnPercent = env.get('DISK_WARN_PERCENT', 80)
+
+function makeDiskCheck(): DiskSpaceCheck {
+  return new DiskSpaceCheck().warnWhenExceeds(diskWarnPercent).failWhenExceeds(90)
+}
 
 class DockerCheck extends BaseCheck {
   name = 'Docker engine check'
@@ -30,7 +41,7 @@ class DockerCheck extends BaseCheck {
 }
 
 export const healthChecks = new HealthChecks().register([
-  new DiskSpaceCheck(),
+  makeDiskCheck(),
   new MemoryHeapCheck(),
   new DbCheck(db.connection()),
   new DockerCheck(),
@@ -42,7 +53,7 @@ export const healthChecks = new HealthChecks().register([
  * Docker engine blips.
  */
 export const livenessChecks = new HealthChecks().register([
-  new DiskSpaceCheck(),
+  makeDiskCheck(),
   new MemoryHeapCheck(),
   new DbCheck(db.connection()),
 ])

@@ -32,6 +32,9 @@ export default await Env.create(new URL('../', import.meta.url), {
   // CORS (comma-separated allowlist used in production)
   CORS_ORIGIN: Env.schema.string.optional(),
 
+  // Health checks
+  DISK_WARN_PERCENT: Env.schema.number.optional(),
+
   /*
   |----------------------------------------------------------
   | Variables for configuring the limiter package
