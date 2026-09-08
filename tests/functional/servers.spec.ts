@@ -1,6 +1,9 @@
 import { test } from '@japa/runner'
 import testUtils from '@adonisjs/core/services/test_utils'
 import User from '#models/user'
+import McServer from '#models/mc_server'
+import McContainerService from '#services/mc_container_service'
+import FakeMcContainerService from '#tests/fakes/fake_mc_container_service'
 
 test.group('Minecraft Servers Management', (group) => {
   group.each.setup(() => testUtils.db().truncate())
@@ -526,5 +529,106 @@ test.group('Minecraft Servers Management', (group) => {
     assert.equal(stats.memoryLimitBytes, 2048 * 1024 * 1024)
     assert.isDefined(stats.diskBytes)
     assert.isNumber(stats.diskBytes)
+  })
+
+  test('refuses to delete an instance while Docker engine status is error', async ({
+    client,
+    assert,
+    swap,
+  }) => {
+    const admin = await User.create({
+      fullName: 'Admin Error Delete',
+      email: 'admin-error-delete@pidan.local',
+      password: 'password123',
+      role: 'admin',
+    })
+
+    const server = await McServer.create({
+      name: 'Undeletable While Docker Broken',
+      identifier: `docker-error-${Date.now()}`,
+      serverPort: 25596,
+    })
+
+    const fake = new FakeMcContainerService()
+    fake.status = 'error'
+    swap(McContainerService, fake as any)
+
+    const delRes = await client.delete(`/api/v1/servers/${server.id}`).loginAs(admin)
+    delRes.assertStatus(503)
+
+    const stillThere = await McServer.find(server.id)
+    assert.isNotNull(stillThere)
+  })
+
+  test('aborts instance deletion and keeps the instance when container removal fails', async ({
+    client,
+    assert,
+    swap,
+  }) => {
+    const admin = await User.create({
+      fullName: 'Admin Remove Fail',
+      email: 'admin-remove-fail@pidan.local',
+      password: 'password123',
+      role: 'admin',
+    })
+
+    const server = await McServer.create({
+      name: 'Stuck Container Server',
+      identifier: `remove-fail-${Date.now()}`,
+      serverPort: 25597,
+    })
+
+    const fake = new FakeMcContainerService()
+    fake.status = 'stopped'
+    fake.removeError = new Error('docker daemon hiccup')
+    swap(McContainerService, fake as any)
+
+    const delRes = await client.delete(`/api/v1/servers/${server.id}`).loginAs(admin)
+    delRes.assertStatus(500)
+    assert.include((delRes.body() as any).errors[0].message, 'Deletion aborted')
+
+    const stillThere = await McServer.find(server.id)
+    assert.isNotNull(stillThere)
+  })
+
+  test('assigned users cannot change dockerImage; admins can', async ({ client, assert }) => {
+    const admin = await User.create({
+      fullName: 'Image Admin',
+      email: 'image-admin@pidan.local',
+      password: 'password123',
+      role: 'admin',
+    })
+
+    const createRes = await client
+      .post('/api/v1/servers')
+      .loginAs(admin)
+      .json({
+        name: 'Image Server',
+        identifier: `image-srv-${Date.now()}`,
+        serverPort: 25598,
+      })
+    createRes.assertStatus(201)
+    const server = (createRes.body() as any).data
+
+    const assignedUser = await User.create({
+      fullName: 'Assigned Operator',
+      email: 'image-operator@pidan.local',
+      password: 'password123',
+      role: 'user',
+      serverIds: [server.id],
+    })
+
+    const userAttempt = await client
+      .patch(`/api/v1/servers/${server.id}`)
+      .loginAs(assignedUser)
+      .json({ dockerImage: 'ghcr.io/evil/image:latest' })
+    userAttempt.assertStatus(403)
+
+    const adminChange = await client
+      .patch(`/api/v1/servers/${server.id}`)
+      .loginAs(admin)
+      .json({ dockerImage: 'ghcr.io/pidan/mc:latest' })
+    adminChange.assertStatus(200)
+    assert.equal((adminChange.body() as any).data.dockerImage, 'ghcr.io/pidan/mc:latest')
   })
 })

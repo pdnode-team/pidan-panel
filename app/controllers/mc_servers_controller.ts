@@ -1,9 +1,15 @@
 import McServer from '#models/mc_server'
 import User from '#models/user'
-import { createMcServerValidator, updateMcServerValidator } from '#validators/mc_server'
+import {
+  createMcServerValidator,
+  updateMcServerValidator,
+  deleteMcServerValidator,
+} from '#validators/mc_server'
 import McServerTransformer from '#transformers/mc_server_transformer'
 import McContainerService from '#services/mc_container_service'
 import ServerBackupService from '#services/server_backup_service'
+import AuditLogService from '#services/audit_log_service'
+import logger from '@adonisjs/core/services/logger'
 import { inject } from '@adonisjs/core'
 import type { HttpContext } from '@adonisjs/core/http'
 import { mkdir, writeFile, rm } from 'node:fs/promises'
@@ -13,7 +19,8 @@ import { join } from 'node:path'
 export default class McServersController {
   constructor(
     protected containerService: McContainerService,
-    protected backupService: ServerBackupService
+    protected backupService: ServerBackupService,
+    protected auditLogService: AuditLogService
   ) {}
 
   /**
@@ -100,6 +107,20 @@ export default class McServersController {
       'utf8'
     )
 
+    await this.auditLogService.record({
+      user,
+      mcServer: server,
+      category: 'server',
+      action: 'server.create',
+      details: {
+        name: server.name,
+        identifier: server.identifier,
+        serverPort: server.serverPort,
+      },
+      status: 'success',
+      ipAddress: request.ip(),
+    })
+
     return response.created(await serialize(McServerTransformer.transform(server)))
   }
 
@@ -156,8 +177,41 @@ export default class McServersController {
       }
     }
 
+    // Only administrators may change the container image: assigned users
+    // must not be able to pull and run arbitrary images with panel privileges.
+    if (
+      payload.dockerImage !== undefined &&
+      user.role !== 'admin' &&
+      payload.dockerImage !== server.dockerImage
+    ) {
+      return response.forbidden({
+        errors: [{ message: 'Only administrators can change the container image.' }],
+      })
+    }
+
+    const changedFields: string[] = []
+    for (const key of Object.keys(payload) as (keyof typeof payload)[]) {
+      if (payload[key] !== undefined) {
+        changedFields.push(key)
+      }
+    }
+
     server.merge(payload)
     await server.save()
+
+    await this.auditLogService.record({
+      user,
+      mcServer: server,
+      category: 'server',
+      action: 'server.update',
+      details: {
+        name: server.name,
+        identifier: server.identifier,
+        changedFields,
+      },
+      status: 'success',
+      ipAddress: request.ip(),
+    })
 
     return serialize(McServerTransformer.transform(server))
   }
@@ -195,15 +249,50 @@ export default class McServersController {
       })
     }
 
-    const deleteFilesParam = request.input('deleteFiles')
-    const shouldDeleteFiles =
-      deleteFilesParam === true || deleteFilesParam === 'true' || deleteFilesParam === '1'
+    if (runtime.status === 'error') {
+      return response.serviceUnavailable({
+        errors: [
+          {
+            message:
+              'Docker engine is unreachable. Cannot safely verify or remove the container, deletion aborted.',
+          },
+        ],
+      })
+    }
+
+    const payload = await request.validateUsing(deleteMcServerValidator, {
+      data: { deleteFiles: request.input('deleteFiles') },
+    })
+    const shouldDeleteFiles = payload.deleteFiles === true
 
     // 3. Purge instance snapshots (both on-disk archives and database records)
     await this.backupService.purgeInstanceBackups(server)
 
     // 4. Forcefully remove container(s) and unbind ports
-    await this.containerService.removeContainer(server)
+    try {
+      await this.containerService.removeContainer(server)
+    } catch (error: any) {
+      logger.error(`Container removal failed for server ${server.id}: ${error?.message}`)
+      await this.auditLogService.record({
+        user,
+        mcServer: server,
+        category: 'server',
+        action: 'server.delete',
+        details: {
+          name: server.name,
+          identifier: server.identifier,
+          deleteFiles: shouldDeleteFiles,
+        },
+        status: 'failed',
+        errorMessage: error?.message || 'Failed to remove the server container',
+        ipAddress: request.ip(),
+      })
+      return response.internalServerError({
+        errors: [
+          { message: 'Failed to remove the server container. Deletion aborted, instance kept.' },
+        ],
+      })
+    }
 
     // 5. Clean up assigned server permissions from all users
     const assignedUsers = await User.query().where('role', 'user')
@@ -214,18 +303,55 @@ export default class McServersController {
       }
     }
 
-    // 6. Delete server database record
-    await server.delete()
-
-    // 7. Wipe data directory if requested
+    // 6. Wipe data directory if requested. Do this BEFORE removing the database
+    // row so a failed wipe keeps the instance and allows a retry.
     if (shouldDeleteFiles) {
-      await rm(server.dataDirectory, {
-        recursive: true,
-        force: true,
-        maxRetries: 3,
-        retryDelay: 100,
-      }).catch(() => {})
+      try {
+        await rm(server.dataDirectory, {
+          recursive: true,
+          force: true,
+          maxRetries: 3,
+          retryDelay: 100,
+        })
+      } catch (error: any) {
+        logger.error(`Data directory wipe failed for server ${server.id}: ${error?.message}`)
+        await this.auditLogService.record({
+          user,
+          mcServer: server,
+          category: 'server',
+          action: 'server.delete',
+          details: {
+            name: server.name,
+            identifier: server.identifier,
+            deleteFiles: true,
+          },
+          status: 'failed',
+          errorMessage: error?.message || 'Failed to delete the server data directory',
+          ipAddress: request.ip(),
+        })
+        return response.internalServerError({
+          errors: [
+            { message: 'Failed to delete the server files. Deletion aborted, instance kept.' },
+          ],
+        })
+      }
     }
+
+    await this.auditLogService.record({
+      user,
+      mcServer: server,
+      category: 'server',
+      action: 'server.delete',
+      details: {
+        name: server.name,
+        identifier: server.identifier,
+        deleteFiles: shouldDeleteFiles,
+      },
+      status: 'success',
+      ipAddress: request.ip(),
+    })
+
+    await server.delete()
 
     return response.noContent()
   }

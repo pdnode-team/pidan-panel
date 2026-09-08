@@ -38,6 +38,7 @@ export default class FakeMcContainerService {
 
   startCalls: McServer[] = []
   stopCalls: McServer[] = []
+  removeError: Error | null = null
 
   async startContainer(server: McServer): Promise<void> {
     this.startCalls.push(server)
@@ -51,7 +52,11 @@ export default class FakeMcContainerService {
   async restartContainer(server: McServer): Promise<void> {
     this.startCalls.push(server)
   }
-  async removeContainer(_server: McServer): Promise<void> {}
+  async removeContainer(_server: McServer): Promise<void> {
+    if (this.removeError) {
+      throw this.removeError
+    }
+  }
   async getContainerStats(_server: McServer): Promise<ContainerStatsSnapshot> {
     return {
       online: this.status === 'running',

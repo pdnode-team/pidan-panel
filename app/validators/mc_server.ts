@@ -10,7 +10,13 @@ export const createMcServerValidator = vine.create(
       .maxLength(50)
       .regex(/^[a-z0-9-]+$/)
       .unique({ table: 'mc_servers', column: 'identifier' }),
-    serverJar: vine.string().trim().minLength(1).maxLength(100).optional(),
+    serverJar: vine
+      .string()
+      .trim()
+      .minLength(1)
+      .maxLength(100)
+      .regex(/^[^/\\]+$/)
+      .optional(),
     dockerImage: vine.string().trim().maxLength(255).optional(),
     minMemoryMb: vine.number().min(256).max(65536).optional(),
     maxMemoryMb: vine.number().min(256).max(65536).optional(),
@@ -31,7 +37,13 @@ export const createMcServerValidator = vine.create(
 export const updateMcServerValidator = vine.create(
   vine.object({
     name: vine.string().trim().minLength(1).maxLength(100).optional(),
-    serverJar: vine.string().trim().minLength(1).maxLength(100).optional(),
+    serverJar: vine
+      .string()
+      .trim()
+      .minLength(1)
+      .maxLength(100)
+      .regex(/^[^/\\]+$/)
+      .optional(),
     dockerImage: vine.string().trim().maxLength(255).optional(),
     minMemoryMb: vine.number().min(256).max(65536).optional(),
     maxMemoryMb: vine.number().min(256).max(65536).optional(),
@@ -56,5 +68,11 @@ export const updateMcServerValidator = vine.create(
     crashBackoffInitialSeconds: vine.number().min(1).max(60).optional(),
     crashBackoffMaxSeconds: vine.number().min(5).max(3600).optional(),
     crashMaxRetries: vine.number().min(0).max(50).optional(),
+  })
+)
+
+export const deleteMcServerValidator = vine.create(
+  vine.object({
+    deleteFiles: vine.boolean().optional(),
   })
 )
