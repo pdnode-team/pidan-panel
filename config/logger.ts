@@ -18,7 +18,7 @@ const loggerConfig = defineConfig({
       /**
        * Logger name shown in log records.
        */
-      name: env.get('APP_NAME'),
+      name: env.get('APP_NAME', 'pidan-panel'),
 
       /**
        * Minimum level to output (trace, debug, info, warn, error, fatal).

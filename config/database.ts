@@ -21,6 +21,20 @@ const dbConfig = defineConfig({
           : app.tmpPath('db.sqlite3'),
       },
 
+      pool: {
+        afterCreate: (
+          conn: { pragma: (statement: string) => unknown },
+          done: (err: Error | null, conn: unknown) => void
+        ) => {
+          // Durable single-node settings: WAL journal for concurrent reads,
+          // busy timeout so parallel requests do not fail on lock contention.
+          conn.pragma('journal_mode = WAL')
+          conn.pragma('busy_timeout = 5000')
+          conn.pragma('foreign_keys = ON')
+          done(null, conn)
+        },
+      },
+
       /**
        * Required by Knex for SQLite defaults.
        */

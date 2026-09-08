@@ -24,15 +24,24 @@ test.group('Global Health Checks', (group) => {
     assert.include(checkNames, 'Docker engine check')
   })
 
-  test('GET /health top-level alias also returns the health check report', async ({
+  test('GET /health is a liveness probe and excludes the Docker check', async ({
     client,
     assert,
+    swap,
   }) => {
+    // Even when the Docker engine is unreachable, the panel itself is alive.
+    const fake = new FakeMcContainerService()
+    fake.getDockerEngineVersion = async () => null
+    swap(McContainerService, fake as any)
+
     const res = await client.get('/health')
-    assert.oneOf(res.status(), [200, 503])
+    res.assertStatus(200)
     const body = res.body()
-    assert.isDefined(body.isHealthy)
+    assert.isTrue(body.isHealthy)
     assert.isArray(body.checks)
+
+    const checkNames = body.checks.map((c: any) => c.name)
+    assert.notInclude(checkNames, 'Docker engine check')
   })
 
   test('returns 503 and failure report when Docker engine is unreachable', async ({

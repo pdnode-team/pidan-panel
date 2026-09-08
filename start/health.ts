@@ -35,3 +35,14 @@ export const healthChecks = new HealthChecks().register([
   new DbCheck(db.connection()),
   new DockerCheck(),
 ])
+
+/**
+ * Liveness subset: process and database only. Used by the top-level /health
+ * endpoint so container orchestrators do not restart the panel whenever the
+ * Docker engine blips.
+ */
+export const livenessChecks = new HealthChecks().register([
+  new DiskSpaceCheck(),
+  new MemoryHeapCheck(),
+  new DbCheck(db.connection()),
+])
