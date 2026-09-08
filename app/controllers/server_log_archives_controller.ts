@@ -4,6 +4,7 @@ import McServer from '#models/mc_server'
 import ServerLogArchiveService from '#services/server_log_archive_service'
 import { logArchiveFilterValidator } from '#validators/audit_log'
 import ServerLogArchiveTransformer from '#transformers/server_log_archive_transformer'
+import app from '@adonisjs/core/services/app'
 import { inject } from '@adonisjs/core'
 import type { HttpContext } from '@adonisjs/core/http'
 
@@ -53,7 +54,13 @@ export default class ServerLogArchivesController {
         })
       }
       return response.badRequest({
-        errors: [{ message: error.message || 'Failed to read log archive' }],
+        errors: [
+          {
+            message: app.inProduction
+              ? 'Failed to read log archive'
+              : error.message || 'Failed to read log archive',
+          },
+        ],
       })
     }
   }
@@ -77,9 +84,12 @@ export default class ServerLogArchivesController {
         params.filename
       )
 
+      // Strip header-breaking characters from the user-controlled filename
+      const safeFilename = params.filename.replace(/[\r\n"\\]/g, '_')
+
       response.header('Content-Length', size)
       response.header('Content-Type', isGzip ? 'application/gzip' : 'text/plain')
-      response.header('Content-Disposition', `attachment; filename="${params.filename}"`)
+      response.header('Content-Disposition', `attachment; filename="${safeFilename}"`)
 
       return response.stream(stream)
     } catch (error: any) {
@@ -89,7 +99,13 @@ export default class ServerLogArchivesController {
         })
       }
       return response.badRequest({
-        errors: [{ message: error.message || 'Failed to download log archive' }],
+        errors: [
+          {
+            message: app.inProduction
+              ? 'Failed to download log archive'
+              : error.message || 'Failed to download log archive',
+          },
+        ],
       })
     }
   }

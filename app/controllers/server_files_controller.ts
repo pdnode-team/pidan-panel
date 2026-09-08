@@ -8,6 +8,7 @@ import {
 import ServerFileTransformer from '#transformers/server_file_transformer'
 import ServerBackupService from '#services/server_backup_service'
 import AuditLogService from '#services/audit_log_service'
+import app from '@adonisjs/core/services/app'
 import { inject } from '@adonisjs/core'
 import type { HttpContext } from '@adonisjs/core/http'
 
@@ -31,7 +32,13 @@ export default class ServerFilesController {
       return serialize(ServerFileTransformer.transform(items))
     } catch (error: any) {
       return response.badRequest({
-        errors: [{ message: error.message || 'Failed to list directory' }],
+        errors: [
+          {
+            message: app.inProduction
+              ? 'Failed to list directory'
+              : error.message || 'Failed to list directory',
+          },
+        ],
       })
     }
   }
@@ -53,7 +60,13 @@ export default class ServerFilesController {
       return serialize(result)
     } catch (error: any) {
       return response.badRequest({
-        errors: [{ message: error.message || 'Failed to read file' }],
+        errors: [
+          {
+            message: app.inProduction
+              ? 'Failed to read file'
+              : error.message || 'Failed to read file',
+          },
+        ],
       })
     }
   }
@@ -98,6 +111,9 @@ export default class ServerFilesController {
           })
         )
       } catch (error: any) {
+        const message = app.inProduction
+          ? 'Failed to upload file'
+          : error.message || 'Failed to upload file'
         await this.auditLogService.record({
           user: auth.user,
           mcServerId: server.id,
@@ -105,12 +121,12 @@ export default class ServerFilesController {
           action: 'file.upload',
           details: { fileName: payload.file.clientName, targetPath: payload.path || '/' },
           status: 'failed',
-          errorMessage: error.message || 'Failed to upload file',
+          errorMessage: message,
           ipAddress: request.ip(),
         })
 
         return response.badRequest({
-          errors: [{ message: error.message || 'Failed to upload file' }],
+          errors: [{ message }],
         })
       }
     }
@@ -137,6 +153,9 @@ export default class ServerFilesController {
         })
       )
     } catch (error: any) {
+      const message = app.inProduction
+        ? 'Failed to save file'
+        : error.message || 'Failed to save file'
       await this.auditLogService.record({
         user: auth.user,
         mcServerId: server.id,
@@ -144,12 +163,12 @@ export default class ServerFilesController {
         action: 'file.save',
         details: { path: payload.path },
         status: 'failed',
-        errorMessage: error.message || 'Failed to save file',
+        errorMessage: message,
         ipAddress: request.ip(),
       })
 
       return response.badRequest({
-        errors: [{ message: error.message || 'Failed to save file' }],
+        errors: [{ message }],
       })
     }
   }
@@ -190,6 +209,9 @@ export default class ServerFilesController {
         message: 'File renamed successfully',
       })
     } catch (error: any) {
+      const message = app.inProduction
+        ? 'Failed to rename file'
+        : error.message || 'Failed to rename file'
       await this.auditLogService.record({
         user: auth.user,
         mcServerId: server.id,
@@ -197,12 +219,12 @@ export default class ServerFilesController {
         action: 'file.rename',
         details: { oldPath: payload.oldPath, newPath: payload.newPath },
         status: 'failed',
-        errorMessage: error.message || 'Failed to rename file',
+        errorMessage: message,
         ipAddress: request.ip(),
       })
 
       return response.badRequest({
-        errors: [{ message: error.message || 'Failed to rename file' }],
+        errors: [{ message }],
       })
     }
   }
@@ -245,6 +267,9 @@ export default class ServerFilesController {
 
       return response.noContent()
     } catch (error: any) {
+      const message = app.inProduction
+        ? 'Failed to delete file'
+        : error.message || 'Failed to delete file'
       await this.auditLogService.record({
         user: auth.user,
         mcServerId: server.id,
@@ -252,12 +277,12 @@ export default class ServerFilesController {
         action: 'file.delete',
         details: { path: relativePath },
         status: 'failed',
-        errorMessage: error.message || 'Failed to delete file',
+        errorMessage: message,
         ipAddress: request.ip(),
       })
 
       return response.badRequest({
-        errors: [{ message: error.message || 'Failed to delete file' }],
+        errors: [{ message }],
       })
     }
   }

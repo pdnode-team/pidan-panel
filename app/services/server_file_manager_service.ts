@@ -1,6 +1,6 @@
 import type McServer from '#models/mc_server'
 import { resolve, dirname, normalize, sep, basename } from 'node:path'
-import { readdir, stat, readFile, writeFile, rm, rename, mkdir } from 'node:fs/promises'
+import { readdir, stat, readFile, writeFile, rm, rename, mkdir, access } from 'node:fs/promises'
 import type { MultipartFile } from '@adonisjs/core/bodyparser'
 
 export interface ServerFileItem {
@@ -31,14 +31,19 @@ export default class ServerFileManagerService {
   }
 
   /**
-   * List files and directories in relative path
+   * List files and directories in relative path. Read-only: a missing
+   * directory resolves to an empty listing instead of being created.
    */
   async listDirectory(server: McServer, relativePath: string = ''): Promise<ServerFileItem[]> {
     const base = resolve(server.dataDirectory)
-    await mkdir(base, { recursive: true })
 
     const targetDir = this.resolveJailedPath(server, relativePath)
-    await mkdir(targetDir, { recursive: true })
+
+    try {
+      await access(targetDir)
+    } catch {
+      return []
+    }
 
     const entries = await readdir(targetDir, { withFileTypes: true })
     const items: ServerFileItem[] = []

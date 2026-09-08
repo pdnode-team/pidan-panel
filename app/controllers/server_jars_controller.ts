@@ -2,6 +2,7 @@ import McServer from '#models/mc_server'
 import McJarsService from '#services/mc_jars_service'
 import McContainerService from '#services/mc_container_service'
 import ServerBackupService from '#services/server_backup_service'
+import app from '@adonisjs/core/services/app'
 import { installServerJarValidator } from '#validators/server_jar'
 import { inject } from '@adonisjs/core'
 import type { HttpContext } from '@adonisjs/core/http'
@@ -63,7 +64,13 @@ export default class ServerJarsController {
       )
     } catch (error: any) {
       return response.badRequest({
-        errors: [{ message: error.message || 'Failed to download and install server jar' }],
+        errors: [
+          {
+            message: app.inProduction
+              ? 'Failed to download and install server jar'
+              : error.message || 'Failed to download and install server jar',
+          },
+        ],
       })
     }
   }

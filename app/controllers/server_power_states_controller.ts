@@ -3,6 +3,7 @@ import McContainerService from '#services/mc_container_service'
 import ServerBackupService from '#services/server_backup_service'
 import ServerWatchdogService from '#services/server_watchdog_service'
 import AuditLogService from '#services/audit_log_service'
+import app from '@adonisjs/core/services/app'
 import { inject } from '@adonisjs/core'
 import type { HttpContext } from '@adonisjs/core/http'
 
@@ -66,18 +67,21 @@ export default class ServerPowerStatesController {
         })
       )
     } catch (error: any) {
+      const message = app.inProduction
+        ? 'Failed to start server container'
+        : error.message || 'Failed to start server container'
       await this.auditLogService.record({
         user: auth.user,
         mcServerId: server.id,
         category: 'power',
         action: 'power.start',
         status: 'failed',
-        errorMessage: error.message || 'Failed to start server container',
+        errorMessage: message,
         ipAddress: request.ip(),
       })
 
       return response.badRequest({
-        errors: [{ message: error.message || 'Failed to start server container' }],
+        errors: [{ message }],
       })
     }
   }
@@ -146,18 +150,21 @@ export default class ServerPowerStatesController {
         message: 'Server container restart initiated',
       })
     } catch (error: any) {
+      const message = app.inProduction
+        ? 'Failed to restart server container'
+        : error.message || 'Failed to restart server container'
       await this.auditLogService.record({
         user: auth.user,
         mcServerId: server.id,
         category: 'power',
         action: 'power.restart',
         status: 'failed',
-        errorMessage: error.message || 'Failed to restart server container',
+        errorMessage: message,
         ipAddress: request.ip(),
       })
 
       return response.badRequest({
-        errors: [{ message: error.message || 'Failed to restart server container' }],
+        errors: [{ message }],
       })
     }
   }

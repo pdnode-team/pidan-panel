@@ -1,6 +1,7 @@
 import McServer from '#models/mc_server'
 import McContainerService from '#services/mc_container_service'
 import AuditLogService from '#services/audit_log_service'
+import app from '@adonisjs/core/services/app'
 import { dispatchServerCommandValidator } from '#validators/server_command'
 import { inject } from '@adonisjs/core'
 import type { HttpContext } from '@adonisjs/core/http'
@@ -34,6 +35,9 @@ export default class ServerCommandsController {
 
       return response.noContent()
     } catch (error: any) {
+      const message = app.inProduction
+        ? 'Failed to dispatch command'
+        : error.message || 'Failed to dispatch command'
       await this.auditLogService.record({
         user: auth?.user,
         mcServerId: server.id,
@@ -41,12 +45,12 @@ export default class ServerCommandsController {
         action: 'command.dispatch',
         details: { command },
         status: 'failed',
-        errorMessage: error.message || 'Failed to dispatch command',
+        errorMessage: message,
         ipAddress: request.ip(),
       })
 
       return response.badRequest({
-        errors: [{ message: error.message || 'Failed to dispatch command' }],
+        errors: [{ message }],
       })
     }
   }
