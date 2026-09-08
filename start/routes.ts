@@ -12,6 +12,9 @@ import router from '@adonisjs/core/services/router'
 import { controllers } from '#generated/controllers'
 import { healthChecks, livenessChecks } from '#start/health'
 import { signupThrottle } from '#start/limiter'
+import app from '@adonisjs/core/services/app'
+import { readFile } from 'node:fs/promises'
+import { join } from 'node:path'
 
 router.get('/', () => {
   return { name: 'pidan-panel', status: 'operational' }
@@ -168,3 +171,13 @@ router
       .use(middleware.auth())
   })
   .prefix('/api/v1')
+
+router.get('*', async ({ request, response }) => {
+  if (request.url().startsWith('/api')) {
+    return response.notFound({ message: 'Not found' })
+  }
+
+  const index = join(app.publicPath(), 'index.html')
+  const html = await readFile(index, 'utf8')
+  return response.type('text/html').send(html)
+})

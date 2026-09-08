@@ -19,7 +19,7 @@ data/backups/*
 .env.development.local
 
 # Frontend assets compiled code
-public/assets
+public
 
 # Build tools specific
 npm-debug.log
